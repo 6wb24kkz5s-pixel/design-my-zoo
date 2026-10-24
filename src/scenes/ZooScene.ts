@@ -1,18 +1,33 @@
 import Phaser from 'phaser';
 import { PLOT_HEIGHT, PLOT_WIDTH } from '../camera';
-import { CAMERA, COLOURS, GRID } from '../config';
+import { CAMERA, COLOURS, GRID, UNDO_LIMIT } from '../config';
+import { featureCatalogue } from '../data/content';
 import { PIXEL_RATIO } from '../display';
-import { createControls } from '../ui/controls';
+import { canUndo, commit, createHistory, undo, type History } from '../logic/history';
+import { browserStorage, loadZoo, saveZoo } from '../logic/save';
+import { EMPTY_ZOO, type Zoo } from '../logic/zoo';
+import { confirmDialog } from '../ui/confirmDialog';
+import { createControls, type Controls } from '../ui/controls';
+import { createPalette } from '../ui/palette';
 import { CameraController } from './CameraController';
+import { DragController } from './DragController';
+import { ItemLayer } from './ItemLayer';
 
 /**
  * The plot: a green building area with a sandy visitor path around the edge,
- * drawn once in world space. The camera pans and zooms over it.
+ * drawn once in world space, with placed items on top. The camera pans and
+ * zooms over it.
  */
 export class ZooScene extends Phaser.Scene {
   private lines!: Phaser.GameObjects.Graphics;
   private linesZoom = 0;
   private cameraController!: CameraController;
+  private dragController!: DragController;
+  private itemLayer!: ItemLayer;
+  private controls!: Controls;
+  private ui!: HTMLElement;
+  private history!: History<Zoo>;
+  private readonly storage = browserStorage();
 
   constructor() {
     super('ZooScene');
@@ -21,16 +36,30 @@ export class ZooScene extends Phaser.Scene {
   create(): void {
     this.drawGround();
     this.lines = this.add.graphics();
+    this.itemLayer = new ItemLayer(this);
+    this.history = createHistory(loadZoo(this.storage, featureCatalogue));
 
     const ui = document.getElementById('ui');
     if (!ui) throw new Error('Missing #ui element');
+    this.ui = ui;
 
-    const controls = createControls(ui, {
+    this.controls = createControls(ui, {
       zoomIn: () => this.cameraController.zoomBy(CAMERA.buttonZoomStep),
       zoomOut: () => this.cameraController.zoomBy(1 / CAMERA.buttonZoomStep),
       seeWholeZoo: () => this.cameraController.fitAll(),
+      undo: () => this.undo(),
+      newZoo: () => void this.askNewZoo(),
     });
-    this.cameraController = new CameraController(this, controls.setZoomState);
+    const palette = createPalette(ui, {
+      onCardPointerDown: (kind, event) => this.dragController.startFromPalette(kind, event),
+    });
+    this.cameraController = new CameraController(this, this.controls.setZoomState);
+    this.dragController = new DragController(this, this.itemLayer, {
+      zoo: () => this.history.present,
+      commit: (next) => this.commit(next),
+      setBinHover: (active) => palette.setBinHover(active),
+    });
+    this.refresh();
 
     this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -49,6 +78,40 @@ export class ZooScene extends Phaser.Scene {
 
   private onResize(): void {
     this.cameraController.resize();
+  }
+
+  /** Every change goes through here: remember it for Undo, autosave, redraw. */
+  private commit(next: Zoo): void {
+    this.history = commit(this.history, next, UNDO_LIMIT);
+    this.afterChange();
+  }
+
+  private undo(): void {
+    this.dragController.cancel();
+    if (!canUndo(this.history)) return;
+    this.history = undo(this.history);
+    this.afterChange();
+  }
+
+  private async askNewZoo(): Promise<void> {
+    this.dragController.cancel();
+    const yes = await confirmDialog(this.ui, {
+      icon: '🧹',
+      message: 'Start a new zoo? Everything will be cleared.',
+      yesLabel: 'Yes, start again',
+      noLabel: 'No, keep my zoo',
+    });
+    if (yes && this.history.present.items.length > 0) this.commit(EMPTY_ZOO);
+  }
+
+  private afterChange(): void {
+    saveZoo(this.storage, this.history.present);
+    this.refresh();
+  }
+
+  private refresh(): void {
+    this.itemLayer.render(this.history.present);
+    this.controls.setCanUndo(canUndo(this.history));
   }
 
   /** Sandy path over the whole plot, then the green building area on top. */

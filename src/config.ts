@@ -30,6 +30,44 @@ export const CAMERA = {
 export const UI = {
   topBarHeight: 64,
   zoomButtonSize: 64,
+  paletteHeight: 168,
+} as const;
+
+/** How many actions Undo remembers (GDD section 7). */
+export const UNDO_LIMIT = 20;
+
+/** localStorage key for the autosaved zoo. Bump the version if the save format changes. */
+export const SAVE_KEY = 'design-my-zoo:zoo:v1';
+
+// Placeholder item colours, one per palette tab, until the Art milestone (M8).
+export const TAB_COLOURS: Readonly<Record<string, number>> = {
+  water: 0x3d9be9,
+  plants: 0x2f7d44,
+  shelter: 0x9a6b3f,
+  food: 0xe8833a,
+};
+
+export const ITEM_STYLE = {
+  fallbackColour: 0x888888,
+  border: 0x1e2a30,
+  borderWidth: 2,
+  /** Gap between an item and the edge of its squares, in world pixels. */
+  inset: 3,
+  /** Opacity of an item while it is being moved somewhere else. */
+  movingAlpha: 0.35,
+  labelSize: 11,
+  labelColour: '#ffffff',
+  labelStroke: '#1e2a30',
+} as const;
+
+/** The outline shown while dragging: green and solid if it fits, grey and dashed if not. */
+export const GHOST_STYLE = {
+  fits: 0x3fd34f,
+  noFit: 0x8a8a8a,
+  fillAlpha: 0.35,
+  lineWidth: 4,
+  dash: 10,
+  gap: 7,
 } as const;
 
 // Placeholder colours until the Art milestone (M8).

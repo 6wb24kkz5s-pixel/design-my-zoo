@@ -123,9 +123,9 @@ export class CameraController {
     return { width: this.scene.scale.width, height: this.scene.scale.height };
   }
 
-  /** The top bar covers the top of the canvas, so the plot fits below it. */
+  /** The top bar and palette cover parts of the canvas, so the plot fits between them. */
   private insets(): Insets {
-    return { top: UI.topBarHeight * PIXEL_RATIO, right: 0, bottom: 0, left: 0 };
+    return { top: UI.topBarHeight * PIXEL_RATIO, right: 0, bottom: UI.paletteHeight * PIXEL_RATIO, left: 0 };
   }
 
   private margin(): number {
