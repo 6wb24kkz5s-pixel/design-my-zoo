@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { UNDO_LIMIT } from '../src/config';
 import { canUndo, commit, createHistory, undo } from '../src/logic/history';
-import { EMPTY_ZOO, placeItem, type Catalogue } from '../src/logic/zoo';
+import { EMPTY_ZOO, placeItem } from '../src/logic/zoo';
+import { fakeCatalogue } from './helpers';
 
 describe('undo history', () => {
   it('undoes changes in reverse order', () => {
@@ -29,8 +30,7 @@ describe('undo history', () => {
   });
 
   it('can undo "New zoo"', () => {
-    const catalogue: Catalogue = { sizeOf: () => [1, 1] };
-    const built = placeItem(EMPTY_ZOO, catalogue, 'small', 3, 3);
+    const built = placeItem(EMPTY_ZOO, fakeCatalogue, 'small', 3, 3);
     if (!built) throw new Error('could not place');
     let h = commit(createHistory(EMPTY_ZOO), built, UNDO_LIMIT);
     h = commit(h, EMPTY_ZOO, UNDO_LIMIT);

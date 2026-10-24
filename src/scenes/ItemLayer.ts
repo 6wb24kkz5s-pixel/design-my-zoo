@@ -3,6 +3,7 @@ import { GHOST_STYLE, GRID, ITEM_STYLE, TAB_COLOURS } from '../config';
 import { getFeature } from '../data/content';
 import { PIXEL_RATIO } from '../display';
 import type { Zoo } from '../logic/zoo';
+import { DEPTH } from './depth';
 
 /** Extra sharpness for labels, so they stay readable when zoomed in. */
 const LABEL_RESOLUTION = PIXEL_RATIO * 3;
@@ -18,9 +19,9 @@ export class ItemLayer {
   private labels: Phaser.GameObjects.Text[] = [];
 
   constructor(private readonly scene: Phaser.Scene) {
-    this.items = scene.add.graphics();
-    this.ghost = scene.add.graphics();
-    this.ghostLabel = this.makeLabel(0, 0, '', 0).setVisible(false);
+    this.items = scene.add.graphics().setDepth(DEPTH.items);
+    this.ghost = scene.add.graphics().setDepth(DEPTH.ghost);
+    this.ghostLabel = this.makeLabel(0, 0, '', 0).setDepth(DEPTH.ghost).setVisible(false);
   }
 
   /** Redraws every item. `movingId` is drawn faded, because it is being dragged elsewhere. */
@@ -41,7 +42,9 @@ export class ItemLayer {
       g.lineStyle(ITEM_STYLE.borderWidth, ITEM_STYLE.border, alpha);
       g.strokeRect(x, y, width, height);
 
-      this.labels.push(this.makeLabel(x + width / 2, y + height / 2, feature.label, width).setAlpha(alpha));
+      this.labels.push(
+        this.makeLabel(x + width / 2, y + height / 2, feature.label, width).setAlpha(alpha).setDepth(DEPTH.items),
+      );
     }
   }
 

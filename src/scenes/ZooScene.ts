@@ -1,32 +1,45 @@
 import Phaser from 'phaser';
 import { PLOT_HEIGHT, PLOT_WIDTH } from '../camera';
 import { CAMERA, COLOURS, GRID, UNDO_LIMIT } from '../config';
-import { featureCatalogue } from '../data/content';
+import { featureCatalogue, FENCE_MATERIALS, getGround, getMaterial } from '../data/content';
 import { PIXEL_RATIO } from '../display';
 import { canUndo, commit, createHistory, undo, type History } from '../logic/history';
+import type { PaintTool } from '../logic/paint';
 import { browserStorage, loadZoo, saveZoo } from '../logic/save';
-import { EMPTY_ZOO, type Zoo } from '../logic/zoo';
+import { EMPTY_ZOO, isEmptyZoo, type Zoo } from '../logic/zoo';
 import { confirmDialog } from '../ui/confirmDialog';
 import { createControls, type Controls } from '../ui/controls';
-import { createPalette } from '../ui/palette';
+import { pickMaterial } from '../ui/materialPicker';
+import { createPaintIndicator, type PaintIndicator } from '../ui/paintIndicator';
+import { createPalette, type Palette } from '../ui/palette';
 import { CameraController } from './CameraController';
+import { DEPTH } from './depth';
 import { DragController } from './DragController';
+import { GroundLayer } from './GroundLayer';
 import { ItemLayer } from './ItemLayer';
+import { PaintController } from './PaintController';
 
 /**
- * The plot: a green building area with a sandy visitor path around the edge,
- * drawn once in world space, with placed items on top. The camera pans and
- * zooms over it.
+ * The plot: an empty building area with a sandy visitor path around the edge,
+ * drawn once in world space, with painted ground, fences and placed items on
+ * top. The camera pans and zooms over it.
  */
 export class ZooScene extends Phaser.Scene {
   private lines!: Phaser.GameObjects.Graphics;
   private linesZoom = 0;
   private cameraController!: CameraController;
   private dragController!: DragController;
+  private paintController!: PaintController;
+  private groundLayer!: GroundLayer;
   private itemLayer!: ItemLayer;
   private controls!: Controls;
+  private palette!: Palette;
+  private paintIndicator!: PaintIndicator;
   private ui!: HTMLElement;
   private history!: History<Zoo>;
+  /** A paint stroke in progress, shown but not yet saved. */
+  private draft: Zoo | null = null;
+  private paintTool: PaintTool | null = null;
   private readonly storage = browserStorage();
 
   constructor() {
@@ -34,8 +47,9 @@ export class ZooScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.drawGround();
-    this.lines = this.add.graphics();
+    this.drawBase();
+    this.groundLayer = new GroundLayer(this);
+    this.lines = this.add.graphics().setDepth(DEPTH.gridLines);
     this.itemLayer = new ItemLayer(this);
     this.history = createHistory(loadZoo(this.storage, featureCatalogue));
 
@@ -50,14 +64,28 @@ export class ZooScene extends Phaser.Scene {
       undo: () => this.undo(),
       newZoo: () => void this.askNewZoo(),
     });
-    const palette = createPalette(ui, {
+    this.palette = createPalette(ui, {
       onCardPointerDown: (kind, event) => this.dragController.startFromPalette(kind, event),
+      onToolTap: (tool) => this.toggleTool(tool),
+      onFenceTap: () => void this.chooseFence(),
     });
+    this.paintIndicator = createPaintIndicator(ui, () => this.setTool(null));
+
     this.cameraController = new CameraController(this, this.controls.setZoomState);
     this.dragController = new DragController(this, this.itemLayer, {
       zoo: () => this.history.present,
       commit: (next) => this.commit(next),
-      setBinHover: (active) => palette.setBinHover(active),
+      setBinHover: (active) => this.palette.setBinHover(active),
+      isPainting: () => this.paintTool !== null,
+    });
+    this.paintController = new PaintController(this, {
+      tool: () => this.paintTool,
+      zoo: () => this.history.present,
+      showDraft: (draft) => {
+        this.draft = draft;
+        this.render();
+      },
+      commit: (next) => this.commit(next),
     });
     this.refresh();
 
@@ -80,6 +108,39 @@ export class ZooScene extends Phaser.Scene {
     this.cameraController.resize();
   }
 
+  /** Tapping the active tool again turns paint mode off (GDD section 7). */
+  private toggleTool(tool: PaintTool): void {
+    const active = this.paintTool;
+    const same = active?.layer === tool.layer && active.value === tool.value;
+    this.setTool(same ? null : tool);
+  }
+
+  /** The Fence tool: turn painting off if it is on, otherwise choose a material first. */
+  private async chooseFence(): Promise<void> {
+    if (this.paintTool?.layer === 'fence' && this.paintTool.value !== null) {
+      this.setTool(null);
+      return;
+    }
+    this.cancelGestures();
+    const material = await pickMaterial(
+      this.ui,
+      { icon: '🧱', title: 'Choose a material for your fence' },
+      FENCE_MATERIALS,
+    );
+    if (material) this.setTool({ layer: 'fence', value: material });
+  }
+
+  private setTool(tool: PaintTool | null): void {
+    this.paintController.cancel();
+    this.paintTool = tool;
+    this.palette.setActiveTool(tool);
+    if (tool) {
+      this.paintIndicator.show(...describeTool(tool));
+    } else {
+      this.paintIndicator.hide();
+    }
+  }
+
   /** Every change goes through here: remember it for Undo, autosave, redraw. */
   private commit(next: Zoo): void {
     this.history = commit(this.history, next, UNDO_LIMIT);
@@ -87,21 +148,26 @@ export class ZooScene extends Phaser.Scene {
   }
 
   private undo(): void {
-    this.dragController.cancel();
+    this.cancelGestures();
     if (!canUndo(this.history)) return;
     this.history = undo(this.history);
     this.afterChange();
   }
 
   private async askNewZoo(): Promise<void> {
-    this.dragController.cancel();
+    this.cancelGestures();
     const yes = await confirmDialog(this.ui, {
       icon: '🧹',
       message: 'Start a new zoo? Everything will be cleared.',
       yesLabel: 'Yes, start again',
       noLabel: 'No, keep my zoo',
     });
-    if (yes && this.history.present.items.length > 0) this.commit(EMPTY_ZOO);
+    if (yes && !isEmptyZoo(this.history.present)) this.commit(EMPTY_ZOO);
+  }
+
+  private cancelGestures(): void {
+    this.dragController.cancel();
+    this.paintController.cancel();
   }
 
   private afterChange(): void {
@@ -110,17 +176,23 @@ export class ZooScene extends Phaser.Scene {
   }
 
   private refresh(): void {
-    this.itemLayer.render(this.history.present);
+    this.render();
     this.controls.setCanUndo(canUndo(this.history));
   }
 
-  /** Sandy path over the whole plot, then the green building area on top. */
-  private drawGround(): void {
+  private render(): void {
+    const zoo = this.draft ?? this.history.present;
+    this.groundLayer.render(zoo);
+    this.itemLayer.render(zoo);
+  }
+
+  /** Sandy path over the whole plot, then the plain, unpainted building area on top. */
+  private drawBase(): void {
     const inner = GRID.pathWidth * GRID.squareSize;
-    const g = this.add.graphics();
+    const g = this.add.graphics().setDepth(DEPTH.base);
     g.fillStyle(COLOURS.path);
     g.fillRect(0, 0, PLOT_WIDTH, PLOT_HEIGHT);
-    g.fillStyle(COLOURS.grass);
+    g.fillStyle(COLOURS.unpainted);
     g.fillRect(inner, inner, PLOT_WIDTH - inner * 2, PLOT_HEIGHT - inner * 2);
   }
 
@@ -147,7 +219,7 @@ export class ZooScene extends Phaser.Scene {
       g.fillRect(-half, row * squareSize - half, PLOT_WIDTH + width, width);
     }
 
-    // ...then the parts strictly inside the building area in the grass colour.
+    // ...then the parts strictly inside the building area in the building-area colour.
     g.fillStyle(COLOURS.gridLine);
     for (let col = pathWidth + 1; col < cols - pathWidth; col++) {
       g.fillRect(col * squareSize - half, inner + half, width, PLOT_HEIGHT - inner * 2 - width);
@@ -156,4 +228,13 @@ export class ZooScene extends Phaser.Scene {
       g.fillRect(inner + half, row * squareSize - half, PLOT_WIDTH - inner * 2 - width, width);
     }
   }
+}
+
+/** Icon and words for the painting sign, e.g. ["🖌️", "Painting: Wood fence"]. */
+function describeTool(tool: PaintTool): [string, string] {
+  if (tool.value === null) {
+    return ['🧽', tool.layer === 'ground' ? 'Eraser: ground' : 'Eraser: fences'];
+  }
+  const name = tool.layer === 'ground' ? getGround(tool.value)?.label : `${getMaterial(tool.value)?.label} fence`;
+  return ['🖌️', `Painting: ${name ?? tool.value}`];
 }

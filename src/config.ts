@@ -73,8 +73,50 @@ export const GHOST_STYLE = {
 // Placeholder colours until the Art milestone (M8).
 export const COLOURS = {
   background: 0x2f3e46,
-  grass: 0x9bd770,
-  gridLine: 0x6fae4a,
+  /** Building-area squares with no ground painted yet: a plain, empty plot. */
+  unpainted: 0xdcdfcc,
+  gridLine: 0xb8bda6,
   path: 0xe2c98f,
   pathLine: 0xc9ac6c,
+} as const;
+
+/** Simple placeholder patterns, so colour is never the only clue (GDD section 15). */
+export type Pattern = 'none' | 'dots' | 'bigDots' | 'stripes' | 'planks' | 'mesh' | 'shine' | 'leaves';
+
+export interface PaintStyle {
+  colour: number;
+  pattern: Pattern;
+  patternColour: number;
+}
+
+// Keyed by the ground ids in char-and-properties.json.
+export const GROUND_STYLE: Readonly<Record<string, PaintStyle>> = {
+  grass: { colour: 0x74c44c, pattern: 'none', patternColour: 0x4f9a32 },
+  soil: { colour: 0x8b5a2b, pattern: 'none', patternColour: 0x6b4420 },
+  sand: { colour: 0xf3df9a, pattern: 'dots', patternColour: 0xc9a85a },
+  mud: { colour: 0x5b4330, pattern: 'stripes', patternColour: 0x3e2d20 },
+  rocks: { colour: 0xa4a4a4, pattern: 'bigDots', patternColour: 0x6e6e6e },
+  fallen_leaves: { colour: 0xd8a24a, pattern: 'leaves', patternColour: 0xa0521d },
+};
+
+// Keyed by the material ids in char-and-properties.json.
+export const MATERIAL_STYLE: Readonly<Record<string, PaintStyle>> = {
+  glass: { colour: 0xbfe8ff, pattern: 'shine', patternColour: 0xffffff },
+  metal: { colour: 0x7d868c, pattern: 'none', patternColour: 0x5c6368 },
+  metal_mesh: { colour: 0xa9b0b5, pattern: 'mesh', patternColour: 0x4f565b },
+  wood: { colour: 0x9a6b3f, pattern: 'planks', patternColour: 0x6b4826 },
+  concrete: { colour: 0xb4b4ac, pattern: 'dots', patternColour: 0x85857d },
+  clear_plastic: { colour: 0xeef7f4, pattern: 'none', patternColour: 0xc4d9d2 },
+  fabric: { colour: 0xd9739f, pattern: 'stripes', patternColour: 0xa94a74 },
+  fabric_net: { colour: 0xe9b6cc, pattern: 'mesh', patternColour: 0xa94a74 },
+};
+
+export const FALLBACK_PAINT_STYLE: PaintStyle = { colour: 0x999999, pattern: 'none', patternColour: 0x666666 };
+
+export const FENCE_DRAW = {
+  /** Gap between a fence block and the edge of its square, in world pixels. */
+  inset: 1,
+  borderWidth: 3,
+  border: 0x1e2a30,
+  patternLineWidth: 2,
 } as const;

@@ -6,9 +6,17 @@ import { GRID } from '../config';
 /** Width and height in squares. */
 export type Size = readonly [number, number];
 
-/** Looks up an item's size by its kind (e.g. "deep_pool"). */
+export interface Square {
+  col: number;
+  row: number;
+}
+
+/** What the rules need to know about the science content. */
 export interface Catalogue {
+  /** An item's size by its kind (e.g. "deep_pool"). */
   sizeOf(kind: string): Size | undefined;
+  isGround(id: string): boolean;
+  isFenceMaterial(id: string): boolean;
 }
 
 export interface PlacedItem {
@@ -19,12 +27,33 @@ export interface PlacedItem {
   readonly row: number;
 }
 
+/** Per-square values, keyed by squareKey(). */
+export type SquareMap = Readonly<Record<string, string>>;
+
 export interface Zoo {
   readonly items: readonly PlacedItem[];
   readonly nextId: number;
+  /** Painted ground type per square. Unpainted squares are missing. */
+  readonly ground: SquareMap;
+  /** Fence material per square. A fence fills its whole square. */
+  readonly fences: SquareMap;
 }
 
-export const EMPTY_ZOO: Zoo = { items: [], nextId: 1 };
+export const EMPTY_ZOO: Zoo = { items: [], nextId: 1, ground: {}, fences: {} };
+
+/** True if nothing has been placed or painted. */
+export function isEmptyZoo(zoo: Zoo): boolean {
+  return zoo.items.length === 0 && Object.keys(zoo.ground).length === 0 && Object.keys(zoo.fences).length === 0;
+}
+
+export function squareKey(col: number, row: number): string {
+  return `${col},${row}`;
+}
+
+export function parseSquareKey(key: string): Square | null {
+  const [col, row] = key.split(',').map(Number);
+  return Number.isInteger(col) && Number.isInteger(row) ? { col: col as number, row: row as number } : null;
+}
 
 interface Rect {
   col: number;
@@ -55,9 +84,18 @@ function rectOf(item: PlacedItem, catalogue: Catalogue): Rect {
   return { col: item.col, row: item.row, width, height };
 }
 
+function hasFence(zoo: Zoo, rect: Rect): boolean {
+  for (let col = rect.col; col < rect.col + rect.width; col++) {
+    for (let row = rect.row; row < rect.row + rect.height; row++) {
+      if (zoo.fences[squareKey(col, row)] !== undefined) return true;
+    }
+  }
+  return false;
+}
+
 /**
  * True if an item of this kind fits with its top-left at (col, row):
- * inside the building area and not overlapping anything else.
+ * inside the building area, not on a fence, and not overlapping anything else.
  * `ignoreId` skips one item, so an item can move onto its own old squares.
  */
 export function canPlace(
@@ -71,14 +109,14 @@ export function canPlace(
   const size = catalogue.sizeOf(kind);
   if (!size) return false;
   const rect = { col, row, width: size[0], height: size[1] };
-  if (!insideBuildingArea(rect)) return false;
+  if (!insideBuildingArea(rect) || hasFence(zoo, rect)) return false;
   return zoo.items.every((item) => item.id === ignoreId || !overlaps(rect, rectOf(item, catalogue)));
 }
 
 /** Adds a new item, or returns null if it does not fit. */
 export function placeItem(zoo: Zoo, catalogue: Catalogue, kind: string, col: number, row: number): Zoo | null {
   if (!canPlace(zoo, catalogue, kind, col, row)) return null;
-  return { items: [...zoo.items, { id: zoo.nextId, kind, col, row }], nextId: zoo.nextId + 1 };
+  return { ...zoo, items: [...zoo.items, { id: zoo.nextId, kind, col, row }], nextId: zoo.nextId + 1 };
 }
 
 /** Moves an item, or returns null if it does not fit there or did not move. */

@@ -1,9 +1,11 @@
 // Autosave to the iPad (localStorage). Nothing leaves the device.
 
 import { SAVE_KEY } from '../config';
-import { EMPTY_ZOO, placeItem, type Catalogue, type Zoo } from './zoo';
+import { paintSquares } from './paint';
+import { EMPTY_ZOO, parseSquareKey, placeItem, type Catalogue, type Zoo } from './zoo';
 
-const SAVE_VERSION = 1;
+/** Version 1 (M2) had items only; version 2 (M3) adds ground and fences. */
+const SAVE_VERSION = 2;
 
 /** The parts of localStorage we use, so tests can pass a fake. */
 export interface KeyValueStore {
@@ -15,6 +17,8 @@ export function serializeZoo(zoo: Zoo): string {
   return JSON.stringify({
     version: SAVE_VERSION,
     items: zoo.items.map(({ kind, col, row }) => ({ kind, col, row })),
+    ground: zoo.ground,
+    fences: zoo.fences,
   });
 }
 
@@ -29,16 +33,30 @@ export function deserializeZoo(text: string, catalogue: Catalogue): Zoo {
   } catch {
     return EMPTY_ZOO;
   }
-  if (!isRecord(parsed) || parsed.version !== SAVE_VERSION || !Array.isArray(parsed.items)) {
+  if (!isRecord(parsed) || (parsed.version !== 1 && parsed.version !== 2) || !Array.isArray(parsed.items)) {
     return EMPTY_ZOO;
   }
 
   let zoo = EMPTY_ZOO;
+  zoo = loadLayer(zoo, catalogue, 'ground', parsed.ground);
+  zoo = loadLayer(zoo, catalogue, 'fence', parsed.fences);
   for (const raw of parsed.items) {
     if (!isRecord(raw)) continue;
     const { kind, col, row } = raw;
     if (typeof kind === 'string' && typeof col === 'number' && typeof row === 'number') {
       zoo = placeItem(zoo, catalogue, kind, col, row) ?? zoo;
+    }
+  }
+  return zoo;
+}
+
+/** Paints saved squares back through the normal paint rules, so bad entries are dropped. */
+function loadLayer(zoo: Zoo, catalogue: Catalogue, layer: 'ground' | 'fence', raw: unknown): Zoo {
+  if (!isRecord(raw)) return zoo;
+  for (const [key, value] of Object.entries(raw)) {
+    const square = parseSquareKey(key);
+    if (square && typeof value === 'string') {
+      zoo = paintSquares(zoo, catalogue, { layer, value }, [square]);
     }
   }
   return zoo;

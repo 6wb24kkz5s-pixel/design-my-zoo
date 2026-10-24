@@ -1,21 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { GRID } from '../src/config';
 import { featureCatalogue, featuresInTab, PLACEABLE_FEATURES } from '../src/data/content';
-import {
-  canPlace,
-  EMPTY_ZOO,
-  itemAt,
-  moveItem,
-  placeItem,
-  removeItem,
-  type Catalogue,
-  type Zoo,
-} from '../src/logic/zoo';
-
-// Made-up kinds so these tests do not depend on the science data.
-const catalogue: Catalogue = {
-  sizeOf: (kind) => ({ small: [1, 1], big: [3, 3], wide: [2, 1] } as const)[kind as 'small' | 'big' | 'wide'],
-};
+import { canPlace, EMPTY_ZOO, itemAt, moveItem, placeItem, removeItem, type Zoo } from '../src/logic/zoo';
+import { fakeCatalogue as catalogue } from './helpers';
 
 const first = GRID.pathWidth;
 const lastCol = GRID.cols - GRID.pathWidth - 1;

@@ -3,6 +3,7 @@ import { GRID } from '../config';
 import { featureCatalogue } from '../data/content';
 import { canPlace, itemAt, moveItem, placeItem, removeItem, type PlacedItem, type Zoo } from '../logic/zoo';
 import type { ItemLayer } from './ItemLayer';
+import { pointerToWorld } from './pointer';
 
 /** Elements with data-drop="bin" remove a dragged item when it is dropped on them. */
 export const BIN_DROP = 'bin';
@@ -12,6 +13,8 @@ export interface DragHost {
   zoo(): Zoo;
   commit(next: Zoo): void;
   setBinHover(active: boolean): void;
+  /** In paint mode one finger paints, so placed items cannot be picked up. */
+  isPainting(): boolean;
 }
 
 type DragSource = { type: 'palette' } | { type: 'plot'; item: PlacedItem };
@@ -32,7 +35,6 @@ interface Drag {
  * pan and zoom always win.
  */
 export class DragController {
-  private readonly pointersDown = new Set<number>();
   private drag: Drag | null = null;
   private readonly canvas: HTMLCanvasElement;
 
@@ -42,7 +44,7 @@ export class DragController {
     private readonly host: DragHost,
   ) {
     this.canvas = scene.game.canvas;
-    // Capture phase, so the count is up to date before any other handler runs.
+    // Capture phase, so a second finger cancels the drag before any other handler runs.
     window.addEventListener('pointerdown', this.onAnyPointerDown, { capture: true });
     window.addEventListener('pointermove', this.onPointerMove);
     window.addEventListener('pointerup', this.onPointerUp);
@@ -64,13 +66,12 @@ export class DragController {
   }
 
   private readonly onAnyPointerDown = (event: PointerEvent): void => {
-    this.pointersDown.add(event.pointerId);
     if (this.drag && event.pointerId !== this.drag.pointerId) this.cancel();
   };
 
   private readonly onCanvasPointerDown = (event: PointerEvent): void => {
-    if (!this.canStart(event)) return;
-    const world = this.toWorld(event);
+    if (this.host.isPainting() || !this.canStart(event)) return;
+    const world = pointerToWorld(this.scene, event);
     const square = GRID.squareSize;
     const item = itemAt(this.host.zoo(), featureCatalogue, Math.floor(world.x / square), Math.floor(world.y / square));
     if (!item) return;
@@ -82,18 +83,16 @@ export class DragController {
   };
 
   private readonly onPointerUp = (event: PointerEvent): void => {
-    this.pointersDown.delete(event.pointerId);
     if (this.drag?.pointerId === event.pointerId) this.finish();
   };
 
   private readonly onPointerCancel = (event: PointerEvent): void => {
-    this.pointersDown.delete(event.pointerId);
     if (this.drag?.pointerId === event.pointerId) this.cancel();
   };
 
-  /** Only the first finger on the screen can start a drag. */
+  /** Only the first finger on the screen (the primary pointer) can start a drag. */
   private canStart(event: PointerEvent): boolean {
-    return this.drag === null && event.isPrimary && this.pointersDown.size === 1;
+    return this.drag === null && event.isPrimary;
   }
 
   private begin(event: PointerEvent, kind: string, source: DragSource, grab: Drag['grab']): void {
@@ -117,7 +116,7 @@ export class DragController {
       return;
     }
 
-    const world = this.toWorld(event);
+    const world = pointerToWorld(this.scene, event);
     const col = Math.round((world.x - drag.grab.x) / GRID.squareSize);
     const row = Math.round((world.y - drag.grab.y) / GRID.squareSize);
     const ignoreId = drag.source.type === 'plot' ? drag.source.item.id : undefined;
@@ -151,13 +150,5 @@ export class DragController {
     this.layer.hideGhost();
     this.host.setBinHover(false);
     if (wasMoving) this.layer.render(this.host.zoo());
-  }
-
-  /** Screen position (CSS pixels) to world position, through the camera. */
-  private toWorld(event: PointerEvent): Phaser.Math.Vector2 {
-    const rect = this.canvas.getBoundingClientRect();
-    const x = ((event.clientX - rect.left) * this.canvas.width) / rect.width;
-    const y = ((event.clientY - rect.top) * this.canvas.height) / rect.height;
-    return this.scene.cameras.main.getWorldPoint(x, y);
   }
 }

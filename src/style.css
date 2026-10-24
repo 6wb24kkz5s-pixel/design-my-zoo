@@ -243,6 +243,178 @@ body {
   gap: 2px;
 }
 
+/* Paint tools (ground types, Fence, Eraser) are tapped, not dragged. */
+.palette-tool {
+  border: 4px solid transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* The active tool: thick gold outline, lifted, with a ✓ badge, so colour is not the only signal. */
+.palette-tool[aria-pressed='true'] {
+  position: relative;
+  border-color: #ffd23f;
+  transform: translateY(-4px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.35);
+}
+
+.palette-tool[aria-pressed='true']::after {
+  content: '✓';
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #ffd23f;
+  color: #1e2a30;
+  font-size: 16px;
+  line-height: 26px;
+}
+
+.palette-tool-swatch {
+  display: block;
+  border: 2px solid rgba(30, 42, 48, 0.4);
+  border-radius: 6px;
+}
+
+.palette-tool-emoji {
+  font-size: 30px;
+  line-height: 1;
+}
+
+/* "🖌️ Painting: …  ✋ Done" sign, above the palette on the left. */
+.paint-indicator {
+  position: absolute;
+  left: 12px;
+  bottom: calc(var(--palette-height) + 12px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 16px;
+  border: 3px solid #ffd23f;
+  border-radius: 16px;
+  background: #2f3e46;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.paint-indicator[hidden] {
+  display: none;
+}
+
+.paint-indicator-done {
+  min-height: 56px;
+}
+
+/* Material picker */
+.picker {
+  max-width: 880px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  border-radius: 20px;
+  background: #f4f1de;
+  color: #1e2a30;
+}
+
+.picker-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.picker-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.picker-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 200px;
+  padding: 14px 10px;
+  border: 3px solid #1e2a30;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #1e2a30;
+  font: inherit;
+}
+
+.picker-card:active {
+  transform: scale(0.97);
+  background: #fff6d6;
+}
+
+.picker-swatch {
+  width: 56px;
+  height: 56px;
+  border: 3px solid #1e2a30;
+  border-radius: 8px;
+}
+
+.picker-name {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.picker-props {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.picker-prop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 48px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.picker-prop-icon {
+  position: relative;
+  font-size: 26px;
+  line-height: 1.2;
+}
+
+/* "Not" a property: faded icon with a diagonal line through it, and struck-through word. */
+.picker-prop-no {
+  color: #8a8f8a;
+}
+
+.picker-prop-no .picker-prop-icon {
+  opacity: 0.45;
+}
+
+.picker-prop-no .picker-prop-icon::after {
+  content: '';
+  position: absolute;
+  left: -4px;
+  right: -4px;
+  top: 50%;
+  border-top: 4px solid #1e2a30;
+  transform: rotate(-35deg);
+}
+
+.picker-prop-no .picker-prop-word {
+  text-decoration: line-through;
+}
+
+.picker-back {
+  min-height: 56px;
+}
+
 .palette-swatch span {
   border-radius: 2px;
 }
