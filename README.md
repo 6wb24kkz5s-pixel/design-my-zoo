@@ -3,7 +3,7 @@
 A blocky, top-down zoo-building game for Primary 3 Science.
 Students build homes for 12 animals and choose materials that suit each job.
 
-**Live link:** LIVE_LINK
+**Live link:** https://6wb24kkz5s-pixel.github.io/design-my-zoo/
 
 ## Run it on your computer
 You need [Node.js](https://nodejs.org) installed. In a terminal, inside this folder:
