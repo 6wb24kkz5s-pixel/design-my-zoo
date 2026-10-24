@@ -143,6 +143,67 @@ body {
   white-space: nowrap;
 }
 
+/* 🐾 Animals drop-down: opens at the left, a grid of cards that never needs scrolling. */
+.animal-panel {
+  right: auto;
+  left: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 156px);
+  gap: 8px;
+}
+
+.animal-panel[hidden] {
+  display: none;
+}
+
+.animal-card {
+  position: relative;
+  min-height: 88px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 6px;
+  border: 3px solid transparent;
+  border-radius: 12px;
+  background: #f4f1de;
+  color: #1e2a30;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.animal-card:active {
+  background: #fff6d6;
+  transform: scale(0.97);
+}
+
+.animal-swatch {
+  display: grid;
+  gap: 2px;
+}
+
+.animal-swatch span {
+  border: 2px solid #1e2a30;
+  border-radius: 4px;
+}
+
+.animal-card-tick {
+  display: none;
+  font-size: 13px;
+}
+
+/* Already in the zoo: faded, dashed, with a "✓ In the zoo" note, so colour is not the only signal. */
+.animal-card-placed {
+  border: 3px dashed #1e2a30;
+  opacity: 0.6;
+}
+
+.animal-card-placed .animal-card-tick {
+  display: block;
+}
+
 .zoom-buttons {
   position: absolute;
   right: 16px;

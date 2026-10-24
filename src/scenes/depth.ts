@@ -5,6 +5,7 @@ export const DEPTH = {
   gridLines: 2,
   fences: 3,
   items: 4,
-  enclosure: 5,
-  ghost: 6,
+  animals: 5,
+  enclosure: 6,
+  ghost: 7,
 } as const;

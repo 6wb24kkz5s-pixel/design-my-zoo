@@ -1,4 +1,5 @@
 import { UI } from '../config';
+import { createAnimalMenu } from './animalMenu';
 
 export interface ControlActions {
   zoomIn(): void;
@@ -6,6 +7,7 @@ export interface ControlActions {
   seeWholeZoo(): void;
   undo(): void;
   newZoo(): void;
+  addAnimal(animalId: string): void;
 }
 
 export interface Controls {
@@ -13,14 +15,17 @@ export interface Controls {
   setZoomState(atMin: boolean, atMax: boolean): void;
   /** Fades Undo when there is nothing to undo. */
   setCanUndo(canUndo: boolean): void;
+  /** Ticks the animals that are already in the zoo, in the 🐾 Animals drop-down. */
+  setAnimalsInZoo(animalIds: readonly string[]): void;
 }
 
-/** Builds the HTML top bar (Undo, See whole zoo, Menu) and the + / – zoom buttons inside #ui. */
+/** Builds the HTML top bar (Animals, Undo, See whole zoo, Menu) and the + / – zoom buttons inside #ui. */
 export function createControls(root: HTMLElement, actions: ControlActions): Controls {
   const style = document.documentElement.style;
   style.setProperty('--top-bar-height', `${UI.topBarHeight}px`);
   style.setProperty('--zoom-button-size', `${UI.zoomButtonSize}px`);
 
+  const animals = createAnimalMenu(actions.addAnimal);
   const undo = makeButton('ui-button', '↩️', 'Undo', actions.undo, true);
   const wholeZoo = makeButton('ui-button', '🗺️', 'See whole zoo', actions.seeWholeZoo, true);
   const menu = createMenu(actions);
@@ -30,7 +35,7 @@ export function createControls(root: HTMLElement, actions: ControlActions): Cont
 
   const topBar = document.createElement('div');
   topBar.className = 'top-bar';
-  topBar.append(undo, wholeZoo, spacer, menu);
+  topBar.append(animals.element, undo, wholeZoo, spacer, menu);
 
   const zoomIn = makeButton('ui-button zoom-button', '+', 'Zoom in', actions.zoomIn);
   const zoomOut = makeButton('ui-button zoom-button', '−', 'Zoom out', actions.zoomOut);
@@ -47,6 +52,9 @@ export function createControls(root: HTMLElement, actions: ControlActions): Cont
     },
     setCanUndo(canUndo) {
       undo.disabled = !canUndo;
+    },
+    setAnimalsInZoo(animalIds) {
+      animals.setPlaced(animalIds);
     },
   };
 }

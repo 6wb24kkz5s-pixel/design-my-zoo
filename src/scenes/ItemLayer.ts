@@ -1,17 +1,14 @@
 import Phaser from 'phaser';
 import { GHOST_STYLE, GRID, ITEM_STYLE, TAB_COLOURS } from '../config';
 import { getFeature } from '../data/content';
-import { PIXEL_RATIO } from '../display';
-import type { Zoo } from '../logic/zoo';
+import type { Size, Zoo } from '../logic/zoo';
 import { DEPTH } from './depth';
 import { dashedRect } from './draw';
-
-/** Extra sharpness for labels, so they stay readable when zoomed in. */
-const LABEL_RESOLUTION = PIXEL_RATIO * 3;
+import { createLabel } from './labels';
 
 /**
  * Draws placed items as placeholder coloured blocks with their names,
- * plus the green / grey outline shown while dragging.
+ * plus the green / grey outline shown while dragging (for items and animals).
  */
 export class ItemLayer {
   private readonly items: Phaser.GameObjects.Graphics;
@@ -49,11 +46,9 @@ export class ItemLayer {
     }
   }
 
-  /** Shows where a dragged item would land: green and solid if it fits, grey and dashed if not. */
-  showGhost(kind: string, col: number, row: number, fits: boolean): void {
-    const feature = getFeature(kind);
-    if (!feature) return;
-    const [w, h] = feature.size;
+  /** Shows where a dragged item or animal would land: green and solid if it fits, grey and dashed if not. */
+  showGhost(label: string, size: Size, col: number, row: number, fits: boolean): void {
+    const [w, h] = size;
     const x = col * GRID.squareSize;
     const y = row * GRID.squareSize;
     const width = w * GRID.squareSize;
@@ -72,7 +67,7 @@ export class ItemLayer {
     }
 
     this.ghostLabel
-      .setText(feature.label)
+      .setText(label)
       .setPosition(x + width / 2, y + height / 2)
       .setWordWrapWidth(width - ITEM_STYLE.inset * 2)
       .setVisible(true);
@@ -94,18 +89,6 @@ export class ItemLayer {
   }
 
   private makeLabel(x: number, y: number, text: string, width: number): Phaser.GameObjects.Text {
-    return this.scene.add
-      .text(x, y, text, {
-        fontFamily: '-apple-system, system-ui, "Segoe UI", Roboto, sans-serif',
-        fontSize: `${ITEM_STYLE.labelSize}px`,
-        fontStyle: 'bold',
-        color: ITEM_STYLE.labelColour,
-        stroke: ITEM_STYLE.labelStroke,
-        strokeThickness: 3,
-        align: 'center',
-        wordWrap: { width: Math.max(width - ITEM_STYLE.inset * 2, 1) },
-      })
-      .setOrigin(0.5)
-      .setResolution(LABEL_RESOLUTION);
+    return createLabel(this.scene, x, y, text, width);
   }
 }

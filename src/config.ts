@@ -60,6 +60,33 @@ export const ITEM_STYLE = {
   labelStroke: '#1e2a30',
 } as const;
 
+/**
+ * Placeholder animals: one neutral colour for all of them, so colour gives no
+ * hint about how the animals are grouped. Real pictures come in M8.
+ */
+export const ANIMAL_STYLE = {
+  colour: 0xfff1c9,
+  border: 0x1e2a30,
+  borderWidth: 3,
+  /** Gap between an animal and the edge of its squares, in world pixels. */
+  inset: 5,
+  labelColour: '#1e2a30',
+  /** The idle bob: how far an animal moves up, in world pixels, and how long one bob takes. */
+  bobHeight: 3,
+  bobMs: 900,
+  /** Each animal starts its bob a little later than the last, so they never move in step. */
+  bobStaggerMs: 170,
+  bubbleFill: 0xffffff,
+  bubbleBorder: 0x3d9be9,
+  bubbleBorderWidth: 3,
+  bubbleText: '#1e2a30',
+  bubbleFontSize: 15,
+  bubblePadX: 10,
+  bubblePadY: 6,
+  /** Gap between the bubble and the top of the animal, in world pixels. */
+  bubbleGap: 8,
+} as const;
+
 /** The outline shown while dragging: green and solid if it fits, grey and dashed if not. */
 export const GHOST_STYLE = {
   fits: 0x3fd34f,

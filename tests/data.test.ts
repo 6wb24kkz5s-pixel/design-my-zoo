@@ -13,6 +13,13 @@ describe('char-and-properties.json', () => {
     }
   });
 
+  it('gives every animal a name and a size', () => {
+    for (const animal of data.animals) {
+      expect(animal.label.length).toBeGreaterThan(0);
+      expect(animal.size).toHaveLength(2);
+    }
+  });
+
   it('contains exactly the 5 material properties', () => {
     expect(Object.keys(data.properties).sort()).toEqual(
       ['flexible', 'floats', 'strong', 'transparent', 'waterproof'],

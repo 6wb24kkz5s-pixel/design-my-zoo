@@ -54,9 +54,8 @@ There are no levels and no win screen. Progress is visible as more animals becom
 
 ## 8. Animals
 - **The 12 animals:** koi, goldfish, frog, salamander, hippopotamus, goat, crocodile, snake, parrot, flamingo, beetle, dragonfly.
-- **The dropdown** shows a picture, name and star rating for each animal. It runs from ⭐ easy to ⭐⭐⭐ challenging, as a quiet hint for choosing.
-- Tapping 🔊 next to a name reads it aloud using the iPad's built-in speech. This works even with sound effects off.
-- Choosing an animal drops it in the middle of the current view, ready to drag. Each animal can be added once.
+- **The dropdown** shows a picture and name for each animal, in alphabetical order. There are no difficulty ratings, and nothing hints at how the animals are grouped. An animal already in the zoo is ticked.
+- Choosing an animal drops it in the middle of the current view, ready to drag. Each animal can be added once. Dropping an animal on the 🗑 Bin takes it out of the zoo, so it can be added again.
 - **Fish** must be placed on pool squares. Elsewhere they show a gentle "I need water!" bubble.
 - **Animation** (subtle):
   - Idle bob or breathe.
@@ -167,12 +166,7 @@ An animal is **happy** when all five hearts are full. The visitor meter is shown
   - A fabric hut falls down.
 
 ## 13. Mixed-readiness supports
-- **Star ratings** in the animal dropdown:
-  - ⭐ Goat, hippopotamus
-  - ⭐⭐ Koi, goldfish, parrot, snake, beetle
-  - ⭐⭐⭐ Frog, salamander, crocodile, flamingo, dragonfly
 - The **💡 hint button** shows that animal's needs as a picture checklist that ticks itself as needs are met. Stronger students can ignore it.
-- 🔊 **Read-aloud** works for animal names and all messages.
 - **There is always a next step:** fast students keep adding animals and improving their visitor views.
 
 ## 14. Art, animation and sound
@@ -180,7 +174,7 @@ An animal is **happy** when all five hearts are full. The visitor meter is shown
 - Ground tiles have a subtle blocky texture.
 - Animations are short loops of 2–4 frames.
 - Use a clear, readable font (not a hard-to-read pixel font).
-- Sound effects are off by default (pops for placing, splashes for water). Read-aloud speech is separate.
+- Sound effects are off by default (pops for placing, splashes for water).
 
 ## 15. Language and accessibility
 - Vocabulary for 9–10 year olds, with "transparent" used consistently.

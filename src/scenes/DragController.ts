@@ -1,38 +1,63 @@
 import Phaser from 'phaser';
 import { GRID } from '../config';
-import { featureCatalogue } from '../data/content';
-import { canPlace, itemAt, moveItem, placeItem, removeItem, type PlacedItem, type Zoo } from '../logic/zoo';
+import { featureCatalogue, getAnimal, getFeature } from '../data/content';
+import {
+  animalAt,
+  canPlace,
+  canPlaceAnimal,
+  itemAt,
+  moveAnimal,
+  moveItem,
+  placeItem,
+  removeAnimal,
+  removeItem,
+  type PlacedAnimal,
+  type PlacedItem,
+  type Size,
+  type Zoo,
+} from '../logic/zoo';
 import type { ItemLayer } from './ItemLayer';
 import { pointerToWorld } from './pointer';
 
-/** Elements with data-drop="bin" remove a dragged item when it is dropped on them. */
+/** Elements with data-drop="bin" remove a dragged item or animal when it is dropped on them. */
 export const BIN_DROP = 'bin';
 const BIN_SELECTOR = `[data-drop="${BIN_DROP}"]`;
+
+/** What is being moved on the plot right now, so it can be drawn faded. */
+export interface Moving {
+  itemId?: number;
+  animalId?: string;
+}
 
 export interface DragHost {
   zoo(): Zoo;
   commit(next: Zoo): void;
   setBinHover(active: boolean): void;
-  /** In paint mode one finger paints, so placed items cannot be picked up. */
+  setMoving(moving: Moving | null): void;
+  /** In paint mode one finger paints, so placed things cannot be picked up. */
   isPainting(): boolean;
 }
 
-type DragSource = { type: 'palette' } | { type: 'plot'; item: PlacedItem };
+type DragSource =
+  | { type: 'palette'; kind: string }
+  | { type: 'item'; item: PlacedItem }
+  | { type: 'animal'; animal: PlacedAnimal };
 
 interface Drag {
   pointerId: number;
-  kind: string;
   source: DragSource;
-  /** Where the finger holds the item, measured from its top-left corner, in world pixels. */
+  label: string;
+  size: Size;
+  /** Where the finger holds it, measured from its top-left corner, in world pixels. */
   grab: { x: number; y: number };
   target: { col: number; row: number; fits: boolean } | null;
   overBin: boolean;
 }
 
 /**
- * One-finger drag and drop: from the palette onto the plot, or a placed item
- * to a new square or the Bin. A second finger cancels the drag, so two-finger
- * pan and zoom always win.
+ * One-finger drag and drop: an item from the palette onto the plot, or a placed
+ * item or animal to a new square or the Bin. A second finger cancels the drag,
+ * so two-finger pan and zoom always win.
  */
 export class DragController {
   private drag: Drag | null = null;
@@ -40,7 +65,7 @@ export class DragController {
 
   constructor(
     private readonly scene: Phaser.Scene,
-    private readonly layer: ItemLayer,
+    private readonly ghost: Pick<ItemLayer, 'showGhost' | 'hideGhost'>,
     private readonly host: DragHost,
   ) {
     this.canvas = scene.game.canvas;
@@ -54,10 +79,13 @@ export class DragController {
 
   /** A finger went down on a palette card. */
   startFromPalette(kind: string, event: PointerEvent): void {
-    const size = featureCatalogue.sizeOf(kind);
-    if (!size || !this.canStart(event)) return;
+    const feature = getFeature(kind);
+    if (!feature || !this.canStart(event)) return;
     const half = GRID.squareSize / 2;
-    this.begin(event, kind, { type: 'palette' }, { x: size[0] * half, y: size[1] * half });
+    this.begin(event, { type: 'palette', kind }, feature.label, feature.size, {
+      x: feature.size[0] * half,
+      y: feature.size[1] * half,
+    });
   }
 
   /** Drops the current drag without changing anything (e.g. before Undo). */
@@ -73,9 +101,29 @@ export class DragController {
     if (this.host.isPainting() || !this.canStart(event)) return;
     const world = pointerToWorld(this.scene, event);
     const square = GRID.squareSize;
-    const item = itemAt(this.host.zoo(), featureCatalogue, Math.floor(world.x / square), Math.floor(world.y / square));
-    if (!item) return;
-    this.begin(event, item.kind, { type: 'plot', item }, { x: world.x - item.col * square, y: world.y - item.row * square });
+    const col = Math.floor(world.x / square);
+    const row = Math.floor(world.y / square);
+    const zoo = this.host.zoo();
+
+    // Animals stand on top of items, so they are picked up first.
+    const animal = animalAt(zoo, featureCatalogue, col, row);
+    const animalInfo = animal && getAnimal(animal.animalId);
+    if (animal && animalInfo) {
+      this.begin(event, { type: 'animal', animal }, animalInfo.label, animalInfo.size, {
+        x: world.x - animal.col * square,
+        y: world.y - animal.row * square,
+      });
+      return;
+    }
+
+    const item = itemAt(zoo, featureCatalogue, col, row);
+    const feature = item && getFeature(item.kind);
+    if (item && feature) {
+      this.begin(event, { type: 'item', item }, feature.label, feature.size, {
+        x: world.x - item.col * square,
+        y: world.y - item.row * square,
+      });
+    }
   };
 
   private readonly onPointerMove = (event: PointerEvent): void => {
@@ -95,10 +143,11 @@ export class DragController {
     return this.drag === null && event.isPrimary;
   }
 
-  private begin(event: PointerEvent, kind: string, source: DragSource, grab: Drag['grab']): void {
+  private begin(event: PointerEvent, source: DragSource, label: string, size: Size, grab: Drag['grab']): void {
     event.preventDefault();
-    this.drag = { pointerId: event.pointerId, kind, source, grab, target: null, overBin: false };
-    if (source.type === 'plot') this.layer.render(this.host.zoo(), source.item.id);
+    this.drag = { pointerId: event.pointerId, source, label, size, grab, target: null, overBin: false };
+    if (source.type === 'item') this.host.setMoving({ itemId: source.item.id });
+    if (source.type === 'animal') this.host.setMoving({ animalId: source.animal.animalId });
     this.update(event);
   }
 
@@ -107,22 +156,33 @@ export class DragController {
     if (!drag) return;
 
     const element = document.elementFromPoint(event.clientX, event.clientY);
-    drag.overBin = drag.source.type === 'plot' && element?.closest(BIN_SELECTOR) != null;
+    drag.overBin = drag.source.type !== 'palette' && element?.closest(BIN_SELECTOR) != null;
     this.host.setBinHover(drag.overBin);
 
     if (element !== this.canvas) {
       drag.target = null;
-      this.layer.hideGhost();
+      this.ghost.hideGhost();
       return;
     }
 
     const world = pointerToWorld(this.scene, event);
     const col = Math.round((world.x - drag.grab.x) / GRID.squareSize);
     const row = Math.round((world.y - drag.grab.y) / GRID.squareSize);
-    const ignoreId = drag.source.type === 'plot' ? drag.source.item.id : undefined;
-    const fits = canPlace(this.host.zoo(), featureCatalogue, drag.kind, col, row, ignoreId);
+    const fits = this.fits(drag.source, col, row);
     drag.target = { col, row, fits };
-    this.layer.showGhost(drag.kind, col, row, fits);
+    this.ghost.showGhost(drag.label, drag.size, col, row, fits);
+  }
+
+  private fits(source: DragSource, col: number, row: number): boolean {
+    const zoo = this.host.zoo();
+    switch (source.type) {
+      case 'palette':
+        return canPlace(zoo, featureCatalogue, source.kind, col, row);
+      case 'item':
+        return canPlace(zoo, featureCatalogue, source.item.kind, col, row, source.item.id);
+      case 'animal':
+        return canPlaceAnimal(zoo, featureCatalogue, source.animal.animalId, col, row);
+    }
   }
 
   private finish(): void {
@@ -133,22 +193,24 @@ export class DragController {
     const zoo = this.host.zoo();
     const { source, target } = drag;
     let next: Zoo | null = null;
-    if (source.type === 'plot' && drag.overBin) {
+    if (drag.overBin && source.type === 'item') {
       next = removeItem(zoo, source.item.id);
+    } else if (drag.overBin && source.type === 'animal') {
+      next = removeAnimal(zoo, source.animal.animalId);
     } else if (target?.fits) {
-      next =
-        source.type === 'plot'
-          ? moveItem(zoo, featureCatalogue, source.item.id, target.col, target.row)
-          : placeItem(zoo, featureCatalogue, drag.kind, target.col, target.row);
+      if (source.type === 'palette') next = placeItem(zoo, featureCatalogue, source.kind, target.col, target.row);
+      if (source.type === 'item') next = moveItem(zoo, featureCatalogue, source.item.id, target.col, target.row);
+      if (source.type === 'animal') {
+        next = moveAnimal(zoo, featureCatalogue, source.animal.animalId, target.col, target.row);
+      }
     }
     if (next) this.host.commit(next);
   }
 
   private end(): void {
-    const wasMoving = this.drag?.source.type === 'plot';
     this.drag = null;
-    this.layer.hideGhost();
+    this.ghost.hideGhost();
     this.host.setBinHover(false);
-    if (wasMoving) this.layer.render(this.host.zoo());
+    this.host.setMoving(null);
   }
 }

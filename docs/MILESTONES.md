@@ -30,7 +30,7 @@ A good **first playable iteration** is M0–M4 (placeholder squares, no art yet)
 - **Done when:** the tests pass, and breaking one fence piece shows a gap warning.
 
 ## M5 — Animals
-- Load `src/data/char-and-properties.json`, picture dropdown with stars, 🔊 read-aloud, dragging animals, the fish-in-water rule, basic idle animation.
+- Load `src/data/char-and-properties.json`, picture dropdown (alphabetical, no ratings), dragging animals, the fish-in-water rule, basic idle animation.
 - **Done when:** all 12 animals can be added and moved, and the koi complains on dry land.
 
 ## M6 — Features and materials

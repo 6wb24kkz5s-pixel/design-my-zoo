@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { SAVE_KEY } from '../src/config';
 import { paintSquares } from '../src/logic/paint';
 import { deserializeZoo, loadZoo, saveZoo, serializeZoo, type KeyValueStore } from '../src/logic/save';
-import { EMPTY_ZOO, placeItem, type Zoo } from '../src/logic/zoo';
+import { EMPTY_ZOO, placeAnimal, placeItem, type Zoo } from '../src/logic/zoo';
 import { fakeCatalogue as catalogue } from './helpers';
 
 function memoryStore(): KeyValueStore & { data: Map<string, string> } {
@@ -18,10 +18,14 @@ function sampleZoo(): Zoo {
     { col: 4, row: 4 },
     { col: 12, row: 12 },
   ]);
-  return paintSquares(grassed, catalogue, { layer: 'fence', value: 'wood' }, [
+  const fenced = paintSquares(grassed, catalogue, { layer: 'fence', value: 'wood' }, [
     { col: 3, row: 3 },
     { col: 3, row: 4 },
   ]);
+  const withCow = placeAnimal(fenced, catalogue, 'cow', 15, 10);
+  const withFish = withCow && placeAnimal(withCow, catalogue, 'fish', 5, 5);
+  if (!withFish) throw new Error('could not add animals to sample zoo');
+  return withFish;
 }
 
 describe('saving and loading', () => {
@@ -36,6 +40,7 @@ describe('saving and loading', () => {
     );
     expect(loaded.ground).toEqual(zoo.ground);
     expect(loaded.fences).toEqual(zoo.fences);
+    expect(loaded.animals).toEqual(zoo.animals);
   });
 
   it('still loads a zoo saved by the M2 version (items only)', () => {
@@ -44,6 +49,39 @@ describe('saving and loading', () => {
     expect(loaded.items).toEqual([{ id: 1, kind: 'big', col: 4, row: 4 }]);
     expect(loaded.ground).toEqual({});
     expect(loaded.fences).toEqual({});
+    expect(loaded.animals).toEqual([]);
+  });
+
+  it('still loads a zoo saved by the M3 and M4 version (no animals)', () => {
+    const m3Save = JSON.stringify({
+      version: 2,
+      items: [{ kind: 'small', col: 4, row: 4 }],
+      ground: { '6,6': 'grass' },
+      fences: { '9,9': 'wood' },
+    });
+    const loaded = deserializeZoo(m3Save, catalogue);
+    expect(loaded.items).toHaveLength(1);
+    expect(loaded.ground).toEqual({ '6,6': 'grass' });
+    expect(loaded.fences).toEqual({ '9,9': 'wood' });
+    expect(loaded.animals).toEqual([]);
+  });
+
+  it('skips animals that are unknown, repeated, on a fence or off the grid', () => {
+    const save = JSON.stringify({
+      version: 3,
+      items: [],
+      fences: { '9,9': 'wood' },
+      animals: [
+        { animalId: 'bird', col: 3, row: 3 },
+        { animalId: 'bird', col: 5, row: 5 },
+        { animalId: 'dragon', col: 6, row: 6 },
+        { animalId: 'fish', col: 9, row: 9 },
+        { animalId: 'cow', col: 0, row: 0 },
+        { animalId: 'lizard', col: 'x', row: 2 },
+        'junk',
+      ],
+    });
+    expect(deserializeZoo(save, catalogue).animals).toEqual([{ animalId: 'bird', col: 3, row: 3 }]);
   });
 
   it('gives an empty zoo when nothing is saved or storage is blocked', () => {

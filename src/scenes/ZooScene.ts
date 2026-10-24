@@ -1,22 +1,31 @@
 import Phaser from 'phaser';
 import { PLOT_HEIGHT, PLOT_WIDTH } from '../camera';
 import { CAMERA, COLOURS, GRID, UNDO_LIMIT } from '../config';
-import { ENCLOSURE_MESSAGES, featureCatalogue, FENCE_MATERIALS, getGround, getMaterial } from '../data/content';
+import {
+  ENCLOSURE_MESSAGES,
+  featureCatalogue,
+  FENCE_MATERIALS,
+  getGround,
+  getMaterial,
+  NOTICES,
+} from '../data/content';
 import { PIXEL_RATIO } from '../display';
+import { findFreeSpot } from '../logic/animals';
 import { checkArea } from '../logic/enclosures';
 import { canUndo, commit, createHistory, undo, type History } from '../logic/history';
 import type { PaintTool } from '../logic/paint';
 import { browserStorage, loadZoo, saveZoo } from '../logic/save';
-import { EMPTY_ZOO, isEmptyZoo, type Square, type Zoo } from '../logic/zoo';
+import { EMPTY_ZOO, isEmptyZoo, placeAnimal, type Square, type Zoo } from '../logic/zoo';
 import { confirmDialog } from '../ui/confirmDialog';
 import { createControls, type Controls } from '../ui/controls';
 import { pickMaterial } from '../ui/materialPicker';
 import { createMessageBanner, type MessageBanner } from '../ui/messageBanner';
 import { createPaintIndicator, type PaintIndicator } from '../ui/paintIndicator';
 import { createPalette, type Palette } from '../ui/palette';
+import { AnimalLayer } from './AnimalLayer';
 import { CameraController } from './CameraController';
 import { DEPTH } from './depth';
-import { DragController } from './DragController';
+import { DragController, type Moving } from './DragController';
 import { EnclosureLayer } from './EnclosureLayer';
 import { GroundLayer } from './GroundLayer';
 import { ItemLayer } from './ItemLayer';
@@ -25,8 +34,8 @@ import { TapController } from './TapController';
 
 /**
  * The plot: an empty building area with a sandy visitor path around the edge,
- * drawn once in world space, with painted ground, fences and placed items on
- * top. The camera pans and zooms over it.
+ * drawn once in world space, with painted ground, fences, placed items and
+ * animals on top. The camera pans and zooms over it.
  */
 export class ZooScene extends Phaser.Scene {
   private lines!: Phaser.GameObjects.Graphics;
@@ -36,6 +45,9 @@ export class ZooScene extends Phaser.Scene {
   private paintController!: PaintController;
   private groundLayer!: GroundLayer;
   private itemLayer!: ItemLayer;
+  private animalLayer!: AnimalLayer;
+  /** The item or animal being dragged on the plot, drawn faded until it lands. */
+  private moving: Moving | null = null;
   private controls!: Controls;
   private palette!: Palette;
   private paintIndicator!: PaintIndicator;
@@ -59,6 +71,7 @@ export class ZooScene extends Phaser.Scene {
     this.groundLayer = new GroundLayer(this);
     this.lines = this.add.graphics().setDepth(DEPTH.gridLines);
     this.itemLayer = new ItemLayer(this);
+    this.animalLayer = new AnimalLayer(this);
     this.enclosureLayer = new EnclosureLayer(this);
     this.history = createHistory(loadZoo(this.storage, featureCatalogue));
 
@@ -73,6 +86,7 @@ export class ZooScene extends Phaser.Scene {
       seeWholeZoo: () => this.cameraController.fitAll(),
       undo: () => this.undo(),
       newZoo: () => void this.askNewZoo(),
+      addAnimal: (animalId) => this.addAnimal(animalId),
     });
     this.palette = createPalette(ui, {
       onCardPointerDown: (kind, event) => this.dragController.startFromPalette(kind, event),
@@ -86,6 +100,10 @@ export class ZooScene extends Phaser.Scene {
       zoo: () => this.history.present,
       commit: (next) => this.commit(next),
       setBinHover: (active) => this.palette.setBinHover(active),
+      setMoving: (moving) => {
+        this.moving = moving;
+        this.render();
+      },
       isPainting: () => this.paintTool !== null,
     });
     this.paintController = new PaintController(this, {
@@ -189,13 +207,38 @@ export class ZooScene extends Phaser.Scene {
   private refresh(): void {
     this.render();
     this.controls.setCanUndo(canUndo(this.history));
+    this.controls.setAnimalsInZoo(this.history.present.animals.map((a) => a.animalId));
   }
 
   private render(): void {
     const zoo = this.draft ?? this.history.present;
     this.groundLayer.render(zoo);
-    this.itemLayer.render(zoo);
+    this.itemLayer.render(zoo, this.moving?.itemId);
+    this.animalLayer.render(zoo, this.moving?.animalId);
     this.showCheck(zoo);
+  }
+
+  /** Puts a new animal on the free squares nearest the middle of the view, ready to drag. */
+  private addAnimal(animalId: string): void {
+    this.cancelGestures();
+    const zoo = this.history.present;
+    const centre = this.cameraController.worldCentre();
+    const near = { col: centre.x / GRID.squareSize, row: centre.y / GRID.squareSize };
+    const spot = findFreeSpot(zoo, featureCatalogue, animalId, near);
+    const next = spot && placeAnimal(zoo, featureCatalogue, animalId, spot.col, spot.row);
+    if (next) {
+      this.commit(next);
+    } else {
+      this.showNotice();
+    }
+  }
+
+  /** "No room" message. The next touch anywhere puts the enclosure message (if any) back. */
+  private showNotice(): void {
+    this.banner.show(NOTICES.noRoom);
+    window.addEventListener('pointerdown', () => this.showCheck(this.draft ?? this.history.present), {
+      once: true,
+    });
   }
 
   /** Tap a square to check its enclosure; tap it again (or the path) to stop checking. */

@@ -5,6 +5,7 @@ import {
   fitView,
   lerpView,
   pan,
+  screenToWorld,
   usableCentre,
   zoomAt,
   zoomLimits,
@@ -68,6 +69,12 @@ export class CameraController {
     const zoom = clampZoom(this.view.zoom * factor, this.limits());
     const target = zoomAt(this.view, viewport, zoom, usableCentre(viewport, this.insets()));
     this.animateTo(clampView(target, viewport, this.insets(), this.margin()));
+  }
+
+  /** The point in the plot at the middle of what the child can see (between the top bar and the palette). */
+  worldCentre(): Point {
+    const viewport = this.viewport();
+    return screenToWorld(this.view, viewport, usableCentre(viewport, this.insets()));
   }
 
   /** "See whole zoo": the whole plot fits on screen. */

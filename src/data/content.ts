@@ -41,6 +41,7 @@ interface RawFeature {
   size?: number[];
   paint?: boolean;
   materials?: string[];
+  isWater?: boolean;
 }
 
 interface RawMaterial {
@@ -109,8 +110,46 @@ const fenceMaterialIds = new Set(FENCE_MATERIALS.map((m) => m.id));
 /** Messages for the enclosure check: closed in, a gap, or not closed in at all. */
 export const ENCLOSURE_MESSAGES: Readonly<Record<'closed' | 'gap' | 'open', Message>> = data.enclosureMessages;
 
+/** Speech-bubble messages that animals say. */
+export const BUBBLES: Readonly<Record<'needWater', Message>> = data.bubbles;
+
+/** Short notices shown in the message banner, e.g. when a new animal has nowhere to go. */
+export const NOTICES: Readonly<Record<'noRoom', Message>> = data.notices;
+
+export interface Animal {
+  id: string;
+  label: string;
+  size: Size;
+  livesInWater: boolean;
+}
+
+/** The 12 animals, in alphabetical order, so the order gives no hint about how they are grouped. */
+export const ANIMALS: readonly Animal[] = data.animals
+  .map((a) => ({
+    id: a.id,
+    label: a.label,
+    size: [a.size[0] ?? 1, a.size[1] ?? 1] as const,
+    livesInWater: a.livesInWater,
+  }))
+  .sort((a, b) => a.label.localeCompare(b.label));
+
+const animalsById = new Map(ANIMALS.map((a) => [a.id, a]));
+
+export function getAnimal(id: string): Animal | undefined {
+  return animalsById.get(id);
+}
+
+const waterKinds = new Set(
+  Object.entries(rawFeatures)
+    .filter(([, f]) => f.isWater === true)
+    .map(([id]) => id),
+);
+
 export const featureCatalogue: Catalogue = {
   sizeOf: (kind) => featuresById.get(kind)?.size,
   isGround: (id) => groundById.has(id),
   isFenceMaterial: (id) => fenceMaterialIds.has(id),
+  animalSizeOf: (id) => animalsById.get(id)?.size,
+  isWaterKind: (kind) => waterKinds.has(kind),
+  livesInWater: (id) => animalsById.get(id)?.livesInWater === true,
 };

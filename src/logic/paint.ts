@@ -1,6 +1,6 @@
 // Painting ground and fences, one finger stroke at a time.
 
-import { insideBuildingArea, itemAt, squareKey, type Catalogue, type Square, type Zoo } from './zoo';
+import { animalAt, insideBuildingArea, itemAt, squareKey, type Catalogue, type Square, type Zoo } from './zoo';
 
 /** What one finger paints. `value` is a ground id or fence material; null means erase. */
 export interface PaintTool {
@@ -37,7 +37,7 @@ export function lineSquares(a: Square, b: Square): Square[] {
 
 /**
  * Paints (or erases) the given squares. Only building-area squares change.
- * Fences skip squares under an item. Returns the same zoo if nothing changed.
+ * Fences skip squares under an item or an animal. Returns the same zoo if nothing changed.
  */
 export function paintSquares(zoo: Zoo, catalogue: Catalogue, tool: PaintTool, squares: readonly Square[]): Zoo {
   const layerName = tool.layer === 'ground' ? 'ground' : 'fences';
@@ -50,7 +50,13 @@ export function paintSquares(zoo: Zoo, catalogue: Catalogue, tool: PaintTool, sq
   let changed = false;
   for (const { col, row } of squares) {
     if (!insideBuildingArea({ col, row, width: 1, height: 1 })) continue;
-    if (tool.layer === 'fence' && tool.value !== null && itemAt(zoo, catalogue, col, row)) continue;
+    if (
+      tool.layer === 'fence' &&
+      tool.value !== null &&
+      (itemAt(zoo, catalogue, col, row) || animalAt(zoo, catalogue, col, row))
+    ) {
+      continue;
+    }
 
     const key = squareKey(col, row);
     if (tool.value === null) {

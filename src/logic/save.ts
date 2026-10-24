@@ -2,10 +2,10 @@
 
 import { SAVE_KEY } from '../config';
 import { paintSquares } from './paint';
-import { EMPTY_ZOO, parseSquareKey, placeItem, type Catalogue, type Zoo } from './zoo';
+import { EMPTY_ZOO, parseSquareKey, placeAnimal, placeItem, type Catalogue, type Zoo } from './zoo';
 
-/** Version 1 (M2) had items only; version 2 (M3) adds ground and fences. */
-const SAVE_VERSION = 2;
+/** Version 1 (M2) had items only; version 2 (M3) added ground and fences; version 3 (M5) adds animals. */
+const SAVE_VERSION = 3;
 
 /** The parts of localStorage we use, so tests can pass a fake. */
 export interface KeyValueStore {
@@ -19,6 +19,7 @@ export function serializeZoo(zoo: Zoo): string {
     items: zoo.items.map(({ kind, col, row }) => ({ kind, col, row })),
     ground: zoo.ground,
     fences: zoo.fences,
+    animals: zoo.animals.map(({ animalId, col, row }) => ({ animalId, col, row })),
   });
 }
 
@@ -33,7 +34,8 @@ export function deserializeZoo(text: string, catalogue: Catalogue): Zoo {
   } catch {
     return EMPTY_ZOO;
   }
-  if (!isRecord(parsed) || (parsed.version !== 1 && parsed.version !== 2) || !Array.isArray(parsed.items)) {
+  const version = isRecord(parsed) ? parsed.version : undefined;
+  if (!isRecord(parsed) || (version !== 1 && version !== 2 && version !== 3) || !Array.isArray(parsed.items)) {
     return EMPTY_ZOO;
   }
 
@@ -45,6 +47,15 @@ export function deserializeZoo(text: string, catalogue: Catalogue): Zoo {
     const { kind, col, row } = raw;
     if (typeof kind === 'string' && typeof col === 'number' && typeof row === 'number') {
       zoo = placeItem(zoo, catalogue, kind, col, row) ?? zoo;
+    }
+  }
+  if (Array.isArray(parsed.animals)) {
+    for (const raw of parsed.animals) {
+      if (!isRecord(raw)) continue;
+      const { animalId, col, row } = raw;
+      if (typeof animalId === 'string' && typeof col === 'number' && typeof row === 'number') {
+        zoo = placeAnimal(zoo, catalogue, animalId, col, row) ?? zoo;
+      }
     }
   }
   return zoo;

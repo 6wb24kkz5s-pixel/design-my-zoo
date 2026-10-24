@@ -64,6 +64,14 @@
     "open":   { "icon": "🧱", "text": "This area is not closed in. Build a fence all the way around." }
   },
 
+  "bubbles": {
+    "needWater": { "icon": "💧", "text": "I need water!" }
+  },
+
+  "notices": {
+    "noRoom": { "icon": "🐾", "text": "There is no room here. Move something first." }
+  },
+
   "animals": [
     {
       "id": "koi", "label": "Koi", "stars": 2, "size": [1, 1],
