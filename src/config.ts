@@ -11,8 +11,26 @@ export const GRID = {
   lineWidth: 1,
 } as const;
 
-/** Space kept around the grid when fitting it to the screen, in pixels. */
+/** Space kept around the grid when fitting it to the screen, in CSS pixels. */
 export const SCREEN_MARGIN = 16;
+
+/** Highest device pixel ratio we render at (iPads are 2). Caps GPU work on 3× screens. */
+export const MAX_PIXEL_RATIO = 2;
+
+export const CAMERA = {
+  /** At most zoomed in, about this many squares fill the screen height (GDD section 6). */
+  minVisibleRows: 6,
+  /** Each tap of + or – zooms in or out by this factor. */
+  buttonZoomStep: 1.5,
+  /** Length of the + / – / "See whole zoo" animation, in milliseconds. */
+  tweenMs: 250,
+} as const;
+
+/** Sizes of the HTML overlay, in CSS pixels. Passed to the CSS as variables. */
+export const UI = {
+  topBarHeight: 64,
+  zoomButtonSize: 64,
+} as const;
 
 // Placeholder colours until the Art milestone (M8).
 export const COLOURS = {

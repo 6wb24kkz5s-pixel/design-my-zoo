@@ -39,11 +39,14 @@ body {
   inset: 0;
 }
 
+/* The game draws at device pixels; this stretches it back to fill #game. */
 #game canvas {
   display: block;
+  width: 100% !important;
+  height: 100% !important;
 }
 
-/* HTML overlay for the top bar and palette (later milestones).
+/* HTML overlay for the top bar, zoom buttons and (later) the palette.
    It lets touches fall through to the game except on its own controls. */
 #ui {
   position: absolute;
@@ -53,6 +56,78 @@ body {
 
 #ui > * {
   pointer-events: auto;
+}
+
+#ui,
+#ui * {
+  touch-action: none;
+}
+
+.top-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--top-bar-height);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+  background: rgba(47, 62, 70, 0.92);
+}
+
+.ui-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 3px solid #f4f1de;
+  border-radius: 12px;
+  background: #3d5a66;
+  color: #f4f1de;
+  font: inherit;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ui-button:active {
+  background: #4f7383;
+  transform: scale(0.95);
+}
+
+/* At a zoom limit: faded with a dashed border, so colour is not the only signal. */
+.ui-button:disabled {
+  opacity: 0.4;
+  border-style: dashed;
+  transform: none;
+}
+
+.ui-button-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.zoom-buttons {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.zoom-button {
+  width: var(--zoom-button-size);
+  height: var(--zoom-button-size);
+  padding: 0;
+}
+
+.zoom-button .ui-button-icon {
+  font-size: 40px;
 }
 
 /* "Turn sideways" message, only in portrait. */
