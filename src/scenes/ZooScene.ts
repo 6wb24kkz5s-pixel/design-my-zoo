@@ -15,7 +15,7 @@ import { checkArea } from '../logic/enclosures';
 import { canUndo, commit, createHistory, undo, type History } from '../logic/history';
 import type { PaintTool } from '../logic/paint';
 import { browserStorage, loadZoo, saveZoo } from '../logic/save';
-import { EMPTY_ZOO, isEmptyZoo, placeAnimal, type Square, type Zoo } from '../logic/zoo';
+import { animalAt, EMPTY_ZOO, isEmptyZoo, placeAnimal, type Square, type Zoo } from '../logic/zoo';
 import { confirmDialog } from '../ui/confirmDialog';
 import { createControls, type Controls } from '../ui/controls';
 import { pickMaterial } from '../ui/materialPicker';
@@ -58,8 +58,8 @@ export class ZooScene extends Phaser.Scene {
   private paintTool: PaintTool | null = null;
   private enclosureLayer!: EnclosureLayer;
   private banner!: MessageBanner;
-  /** The square the child tapped to check its enclosure. Re-checked after every change. */
-  private checkedSquare: Square | null = null;
+  /** The animal the child tapped to check its enclosure. Re-checked after every change, wherever it moves. */
+  private checkedAnimalId: string | null = null;
   private readonly storage = browserStorage();
 
   constructor() {
@@ -241,18 +241,23 @@ export class ZooScene extends Phaser.Scene {
     });
   }
 
-  /** Tap a square to check its enclosure; tap it again (or the path) to stop checking. */
+  /**
+   * Tap an animal to check its enclosure; tap it again to stop checking.
+   * Tapping anywhere else (empty ground, an item) just clears the check.
+   */
   private toggleCheck(square: Square): void {
-    const same = this.checkedSquare?.col === square.col && this.checkedSquare.row === square.row;
-    this.checkedSquare = same ? null : square;
-    this.showCheck(this.draft ?? this.history.present);
+    const zoo = this.draft ?? this.history.present;
+    const tapped = animalAt(zoo, featureCatalogue, square.col, square.row)?.animalId ?? null;
+    this.checkedAnimalId = tapped !== null && tapped !== this.checkedAnimalId ? tapped : null;
+    this.showCheck(zoo);
   }
 
   /** Glow for a closed area, gap markers for an almost-closed one, with a message either way. */
   private showCheck(zoo: Zoo): void {
-    const check = this.checkedSquare ? checkArea(zoo.fences, this.checkedSquare) : null;
+    const animal = zoo.animals.find((a) => a.animalId === this.checkedAnimalId);
+    const check = animal ? checkArea(zoo.fences, { col: animal.col, row: animal.row }) : null;
     if (!check || check.kind === 'none') {
-      this.checkedSquare = null;
+      this.checkedAnimalId = null;
       this.enclosureLayer.show(null);
       this.banner.hide();
       return;
