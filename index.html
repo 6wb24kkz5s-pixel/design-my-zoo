@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Design My Zoo" />
+    <meta name="theme-color" content="#2f3e46" />
+    <title>Design My Zoo</title>
+    <!-- Inline so the background colour is there before anything else loads (no white flash). -->
+    <style>
+      html, body { margin: 0; background: #2f3e46; }
+    </style>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <div id="game"></div>
+      <div id="ui"></div>
+    </div>
+
+    <div id="rotate" role="alert">
+      <svg class="rotate-icon" viewBox="0 0 120 120" aria-hidden="true">
+        <g class="rotate-tablet">
+          <rect x="35" y="15" width="50" height="90" rx="8" fill="#f4f1de" />
+          <rect x="41" y="23" width="38" height="70" rx="2" fill="#9bd770" />
+          <circle cx="60" cy="99" r="3" fill="#2f3e46" />
+        </g>
+      </svg>
+      <p>Please turn your iPad sideways 🔄</p>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

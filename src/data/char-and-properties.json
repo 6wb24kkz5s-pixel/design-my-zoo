@@ -1,0 +1,180 @@
+{
+  "properties": {
+    "strong":      { "label": "Strong",      "icon": "💪" },
+    "flexible":    { "label": "Flexible",    "icon": "🌀" },
+    "waterproof":  { "label": "Waterproof",  "icon": "💧" },
+    "transparent": { "label": "Transparent", "icon": "🔍" },
+    "floats":      { "label": "Floats",      "icon": "🛟" }
+  },
+
+  "materials": {
+    "glass":         { "label": "Glass",           "strong": true,  "flexible": false, "waterproof": true,  "transparent": true,  "floats": false, "letsAirThrough": false, "gaps": "none" },
+    "metal":         { "label": "Metal",           "strong": true,  "flexible": false, "waterproof": true,  "transparent": false, "floats": false, "letsAirThrough": false, "gaps": "none" },
+    "metal_mesh":    { "label": "Metal wire mesh", "strong": true,  "flexible": false, "waterproof": null,  "transparent": false, "floats": null,  "letsAirThrough": true,  "gaps": "big" },
+    "wood":          { "label": "Wood",            "strong": true,  "flexible": false, "waterproof": false, "transparent": false, "floats": true,  "letsAirThrough": false, "gaps": "none" },
+    "concrete":      { "label": "Concrete",        "strong": true,  "flexible": false, "waterproof": true,  "transparent": false, "floats": false, "letsAirThrough": false, "gaps": "none" },
+    "clear_plastic": { "label": "Clear plastic",   "strong": false, "flexible": true,  "waterproof": true,  "transparent": true,  "floats": true,  "letsAirThrough": false, "gaps": "none" },
+    "fabric":        { "label": "Fabric",          "strong": false, "flexible": true,  "waterproof": false, "transparent": false, "floats": null,  "letsAirThrough": false, "gaps": "none" },
+    "fabric_net":    { "label": "Fabric net",      "strong": false, "flexible": true,  "waterproof": null,  "transparent": false, "floats": null,  "letsAirThrough": true,  "gaps": "small" }
+  },
+
+  "ground": {
+    "grass":         { "label": "Grass" },
+    "soil":          { "label": "Soil" },
+    "sand":          { "label": "Sand" },
+    "mud":           { "label": "Mud" },
+    "rocks":         { "label": "Rocks" },
+    "fallen_leaves": { "label": "Fallen leaves" }
+  },
+
+  "features": {
+    "fence":           { "label": "Fence",           "tab": "fences",  "paint": true,   "materials": ["glass", "metal_mesh", "wood", "concrete", "clear_plastic", "fabric"], "mustBe": { "strong": true },        "failMessage": "This fence is not strong. Animals can push through! 💪" },
+    "deep_pool":       { "label": "Deep pool",       "tab": "water",   "size": [3, 3], "materials": ["glass", "concrete", "clear_plastic", "fabric"], "mustBe": { "waterproof": true }, "isWater": true, "failMessage": "The pool is empty! This material is not waterproof. 💧" },
+    "shallow_pond":    { "label": "Shallow pond",    "tab": "water",   "size": [3, 2], "materials": ["glass", "concrete", "clear_plastic", "fabric"], "mustBe": { "waterproof": true }, "isWater": true, "failMessage": "The pond is empty! This material is not waterproof. 💧" },
+    "water_bowl":      { "label": "Water bowl",      "tab": "water",   "size": [1, 1], "materials": ["metal", "clear_plastic", "fabric"],            "mustBe": { "waterproof": true },  "failMessage": "The water soaked away! This material is not waterproof. 💧" },
+    "water_plants":    { "label": "Water plants",    "tab": "water",   "size": [1, 1], "placeOn": "water" },
+    "floating_island": { "label": "Floating island", "tab": "water",   "size": [1, 1], "placeOn": "water", "materials": ["metal", "wood", "concrete", "clear_plastic"], "mustBe": { "floats": true }, "failMessage": "Glug! The island sank. This material does not float. 🛟" },
+    "mist_sprayer":    { "label": "Mist sprayer",    "tab": "water",   "size": [1, 1] },
+    "tall_tree":       { "label": "Tall tree",       "tab": "plants",  "size": [1, 1] },
+    "bushes":          { "label": "Bushes",          "tab": "plants",  "size": [1, 1] },
+    "hollow_log":      { "label": "Hollow log",      "tab": "plants",  "size": [2, 1] },
+    "rock_cave":       { "label": "Rock cave",       "tab": "shelter", "size": [2, 2] },
+    "hut":             { "label": "Hut",             "tab": "shelter", "size": [2, 2], "materials": ["wood", "concrete", "fabric"],      "mustBe": { "strong": true },       "failMessage": "The hut fell down! This material is not strong. 💪" },
+    "shade_cover":     { "label": "Shade cover",     "tab": "shelter", "size": [2, 2], "materials": ["glass", "wood", "fabric"],         "mustBe": { "transparent": false }, "failMessage": "The sun shines right through! Glass is transparent. ☀️" },
+    "swing":           { "label": "Swing",           "tab": "shelter", "size": [1, 1], "materials": ["metal", "wood", "fabric"],         "mustBe": { "flexible": true },     "failMessage": "It can't swing! This material is not flexible. 🌀" },
+    "fish_food":       { "label": "Fish food",       "tab": "food",    "size": [1, 1] },
+    "insects":         { "label": "Insects",         "tab": "food",    "size": [1, 1] },
+    "seeds_fruit":     { "label": "Seeds and fruit", "tab": "food",    "size": [1, 1] },
+    "shrimp":          { "label": "Shrimp",          "tab": "food",    "size": [1, 1] },
+    "meat":            { "label": "Meat",            "tab": "food",    "size": [1, 1] },
+    "mice":            { "label": "Mice",            "tab": "food",    "size": [1, 1] },
+    "hay":             { "label": "Hay",             "tab": "food",    "size": [1, 1] },
+    "rotting_fruit":   { "label": "Rotting fruit",   "tab": "food",    "size": [1, 1] }
+  },
+
+  "roof": {
+    "materials": ["glass", "metal_mesh", "clear_plastic", "fabric_net"],
+    "mustBe": { "letsAirThrough": true },
+    "failMessage": "This roof keeps out fresh air! 🌬 Try one with holes."
+  },
+
+  "animals": [
+    {
+      "id": "koi", "label": "Koi", "stars": 2, "size": [1, 1],
+      "livesInWater": true, "flies": false, "small": false,
+      "food":  ["fish_food"],
+      "water": ["deep_pool", "shallow_pond"],
+      "home":  [["water_plants"]],
+      "eats":  [],
+      "messages": { "food": "The koi is hungry! 🐟", "home": "The koi wants plants to hide in. 🌿", "air": "The koi needs to be in water to breathe!" }
+    },
+    {
+      "id": "goldfish", "label": "Goldfish", "stars": 2, "size": [1, 1],
+      "livesInWater": true, "flies": false, "small": false,
+      "food":  ["fish_food"],
+      "water": ["deep_pool", "shallow_pond"],
+      "home":  [["water_plants"]],
+      "eats":  [],
+      "messages": { "food": "The goldfish is hungry! 🐟", "home": "The goldfish wants plants to hide in. 🌿", "air": "The goldfish needs to be in water to breathe!" }
+    },
+    {
+      "id": "frog", "label": "Frog", "stars": 3, "size": [1, 1],
+      "livesInWater": false, "flies": false, "small": true,
+      "food":  ["insects"],
+      "water": ["shallow_pond", "deep_pool"],
+      "home":  [["shallow_pond", "deep_pool"], ["grass", "soil", "mud", "fallen_leaves"], ["bushes", "hollow_log", "fallen_leaves"]],
+      "eats":  ["beetle", "dragonfly"],
+      "messages": { "food": "The frog is hungry! 🐸", "home": "The frog needs water AND land, with a place to hide.", "safety": "The frog can squeeze through the gaps!" }
+    },
+    {
+      "id": "salamander", "label": "Salamander", "stars": 3, "size": [1, 1],
+      "livesInWater": false, "flies": false, "small": true,
+      "food":  ["insects"],
+      "water": ["shallow_pond"],
+      "home":  [["soil", "mud", "fallen_leaves"], ["hollow_log", "rock_cave", "rocks"]],
+      "eats":  ["beetle"],
+      "messages": { "food": "The salamander is hungry!", "home": "The salamander likes damp ground and a place to hide.", "safety": "The salamander can squeeze through the gaps!" }
+    },
+    {
+      "id": "hippopotamus", "label": "Hippopotamus", "stars": 1, "size": [2, 2],
+      "livesInWater": false, "flies": false, "small": false,
+      "food":  ["grass", "hay"],
+      "water": ["deep_pool"],
+      "home":  [["deep_pool"], ["mud", "grass"], ["shade_cover", "tall_tree"]],
+      "eats":  [],
+      "messages": { "food": "The hippo is hungry! 🦛", "home": "The hippo needs a deep pool, land and shade.", "water": "The hippo needs a deep pool! 💧" }
+    },
+    {
+      "id": "goat", "label": "Goat", "stars": 1, "size": [1, 1],
+      "livesInWater": false, "flies": false, "small": false,
+      "food":  ["grass", "hay"],
+      "water": ["water_bowl", "shallow_pond"],
+      "home":  [["hut", "shade_cover"], ["grass", "rocks"]],
+      "eats":  [],
+      "messages": { "food": "The goat is hungry! 🐐", "home": "The goat needs land and a shelter.", "water": "The goat is thirsty! 💧" }
+    },
+    {
+      "id": "crocodile", "label": "Crocodile", "stars": 3, "size": [2, 1],
+      "livesInWater": false, "flies": false, "small": false,
+      "food":  ["meat"],
+      "water": ["deep_pool"],
+      "home":  [["deep_pool"], ["sand"]],
+      "eats":  ["koi", "goldfish", "frog", "salamander", "goat", "flamingo", "snake"],
+      "messages": { "food": "The crocodile is hungry! 🐊", "home": "The crocodile needs a deep pool and sand to rest on.", "eats": "Shh — the crocodile might eat its neighbours! 🐊" }
+    },
+    {
+      "id": "snake", "label": "Snake", "stars": 2, "size": [1, 1],
+      "livesInWater": false, "flies": false, "small": true,
+      "food":  ["mice"],
+      "water": ["water_bowl"],
+      "home":  [["rock_cave", "hollow_log", "rocks", "bushes"]],
+      "eats":  ["frog", "salamander"],
+      "messages": { "food": "The snake is hungry! 🐍", "home": "The snake needs a place to hide.", "safety": "The snake can slide through the gaps!", "eats": "Shh — the snake might eat the frog! 🐍" }
+    },
+    {
+      "id": "parrot", "label": "Parrot", "stars": 2, "size": [1, 1],
+      "livesInWater": false, "flies": true, "small": false,
+      "food":  ["seeds_fruit"],
+      "water": ["water_bowl"],
+      "home":  [["tall_tree", "swing"]],
+      "eats":  [],
+      "messages": { "food": "The parrot is hungry! 🦜", "home": "The parrot needs somewhere high to sit.", "safety": "Can the parrot fly away? Try adding a roof. 🦜" }
+    },
+    {
+      "id": "flamingo", "label": "Flamingo", "stars": 3, "size": [1, 1],
+      "livesInWater": false, "flies": true, "small": false,
+      "food":  ["shrimp"],
+      "water": ["shallow_pond"],
+      "home":  [["shallow_pond"], ["mud"]],
+      "eats":  [],
+      "messages": { "food": "The flamingo is hungry! 🦩", "home": "The flamingo likes shallow water and mud.", "safety": "Can the flamingo fly away? Try adding a roof." }
+    },
+    {
+      "id": "beetle", "label": "Beetle", "stars": 2, "size": [1, 1],
+      "livesInWater": false, "flies": true, "small": true,
+      "food":  ["rotting_fruit", "hollow_log"],
+      "water": ["mist_sprayer", "water_bowl", "shallow_pond"],
+      "home":  [["soil"], ["hollow_log", "fallen_leaves"]],
+      "eats":  [],
+      "messages": { "food": "The beetle is hungry! 🪲", "home": "The beetle likes soil and logs or leaves.", "safety": "The beetle can fly or crawl out! Use a fabric net roof and no wire mesh." }
+    },
+    {
+      "id": "dragonfly", "label": "Dragonfly", "stars": 3, "size": [1, 1],
+      "livesInWater": false, "flies": true, "small": true,
+      "food":  ["insects"],
+      "water": ["shallow_pond"],
+      "home":  [["shallow_pond"], ["water_plants"]],
+      "eats":  [],
+      "messages": { "food": "The dragonfly is hungry!", "home": "The dragonfly needs a pond with water plants.", "safety": "The dragonfly can fly out! Use a fabric net roof." }
+    }
+  ],
+
+  "rules": {
+    "nullProperty": "null means the property is not shown or tested for that material.",
+    "home": "Each inner list is 'any one of these'. All inner lists must be met.",
+    "water": "Any one listed source, inside the same enclosure, that passes its material check.",
+    "air": "Full unless the enclosure has a roof that does not let air through. Animals with livesInWater must stand on water squares.",
+    "safety": "Enclosure closed and every fence piece strong. small: no fence piece with big gaps. flies: needs a roof; flies + small: roof gaps must be 'small'. Animals with livesInWater count as safe while in a pool. No animal it shares with is in its 'eats' list, and it is not in any neighbour's 'eats' list.",
+    "visitorView": "great = any transparent fence piece, or a transparent pool holding fish; okay = big-gap fence pieces only; none = otherwise."
+  }
+}

@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+
+# Test coverage
+coverage/
+
+# Environment / secrets (none expected, but never commit them)
+.env
+.env.*
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS and editor junk
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
