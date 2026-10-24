@@ -4,6 +4,7 @@ import { getFeature } from '../data/content';
 import { PIXEL_RATIO } from '../display';
 import type { Zoo } from '../logic/zoo';
 import { DEPTH } from './depth';
+import { dashedRect } from './draw';
 
 /** Extra sharpness for labels, so they stay readable when zoomed in. */
 const LABEL_RESOLUTION = PIXEL_RATIO * 3;
@@ -67,7 +68,7 @@ export class ItemLayer {
     if (fits) {
       g.strokeRect(x, y, width, height);
     } else {
-      dashedRect(g, x, y, width, height);
+      dashedRect(g, x, y, width, height, GHOST_STYLE.dash, GHOST_STYLE.gap);
     }
 
     this.ghostLabel
@@ -106,26 +107,5 @@ export class ItemLayer {
       })
       .setOrigin(0.5)
       .setResolution(LABEL_RESOLUTION);
-  }
-}
-
-function dashedRect(g: Phaser.GameObjects.Graphics, x: number, y: number, width: number, height: number): void {
-  dashedLine(g, x, y, x + width, y);
-  dashedLine(g, x + width, y, x + width, y + height);
-  dashedLine(g, x + width, y + height, x, y + height);
-  dashedLine(g, x, y + height, x, y);
-}
-
-function dashedLine(g: Phaser.GameObjects.Graphics, x1: number, y1: number, x2: number, y2: number): void {
-  const length = Math.hypot(x2 - x1, y2 - y1);
-  const step = GHOST_STYLE.dash + GHOST_STYLE.gap;
-  for (let d = 0; d < length; d += step) {
-    const end = Math.min(d + GHOST_STYLE.dash, length);
-    g.lineBetween(
-      x1 + ((x2 - x1) * d) / length,
-      y1 + ((y2 - y1) * d) / length,
-      x1 + ((x2 - x1) * end) / length,
-      y1 + ((y2 - y1) * end) / length,
-    );
   }
 }

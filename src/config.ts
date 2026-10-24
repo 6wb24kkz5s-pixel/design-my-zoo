@@ -113,6 +113,30 @@ export const MATERIAL_STYLE: Readonly<Record<string, PaintStyle>> = {
 
 export const FALLBACK_PAINT_STYLE: PaintStyle = { colour: 0x999999, pattern: 'none', patternColour: 0x666666 };
 
+export const ENCLOSURE = {
+  /** Gaps up to this many squares wide are found and shown; wider openings just count as "not closed in". */
+  maxGapWidth: 3,
+} as const;
+
+/** The enclosure check: gold outline when closed, amber dashed boxes on gaps. Both pulse gently. */
+export const ENCLOSURE_STYLE = {
+  glow: 0xffd23f,
+  glowWidth: 6,
+  gap: 0xff9f1c,
+  gapFillAlpha: 0.45,
+  gapLineWidth: 5,
+  dash: 9,
+  dashGap: 6,
+  pulseMs: 700,
+  pulseMinAlpha: 0.35,
+} as const;
+
+/** A touch counts as a tap (not a drag) if it moves less than this and lifts quickly. */
+export const TAP = {
+  maxMoveCss: 12,
+  maxMs: 600,
+} as const;
+
 export const FENCE_DRAW = {
   /** Gap between a fence block and the edge of its square, in world pixels. */
   inset: 1,

@@ -6,6 +6,13 @@ describe('char-and-properties.json', () => {
     expect(data.animals).toHaveLength(12);
   });
 
+  it('pairs every enclosure message with an icon', () => {
+    for (const message of Object.values(data.enclosureMessages)) {
+      expect(message.icon.length).toBeGreaterThan(0);
+      expect(message.text.length).toBeGreaterThan(0);
+    }
+  });
+
   it('contains exactly the 5 material properties', () => {
     expect(Object.keys(data.properties).sort()).toEqual(
       ['flexible', 'floats', 'strong', 'transparent', 'waterproof'],

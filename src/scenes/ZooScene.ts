@@ -1,23 +1,27 @@
 import Phaser from 'phaser';
 import { PLOT_HEIGHT, PLOT_WIDTH } from '../camera';
 import { CAMERA, COLOURS, GRID, UNDO_LIMIT } from '../config';
-import { featureCatalogue, FENCE_MATERIALS, getGround, getMaterial } from '../data/content';
+import { ENCLOSURE_MESSAGES, featureCatalogue, FENCE_MATERIALS, getGround, getMaterial } from '../data/content';
 import { PIXEL_RATIO } from '../display';
+import { checkArea } from '../logic/enclosures';
 import { canUndo, commit, createHistory, undo, type History } from '../logic/history';
 import type { PaintTool } from '../logic/paint';
 import { browserStorage, loadZoo, saveZoo } from '../logic/save';
-import { EMPTY_ZOO, isEmptyZoo, type Zoo } from '../logic/zoo';
+import { EMPTY_ZOO, isEmptyZoo, type Square, type Zoo } from '../logic/zoo';
 import { confirmDialog } from '../ui/confirmDialog';
 import { createControls, type Controls } from '../ui/controls';
 import { pickMaterial } from '../ui/materialPicker';
+import { createMessageBanner, type MessageBanner } from '../ui/messageBanner';
 import { createPaintIndicator, type PaintIndicator } from '../ui/paintIndicator';
 import { createPalette, type Palette } from '../ui/palette';
 import { CameraController } from './CameraController';
 import { DEPTH } from './depth';
 import { DragController } from './DragController';
+import { EnclosureLayer } from './EnclosureLayer';
 import { GroundLayer } from './GroundLayer';
 import { ItemLayer } from './ItemLayer';
 import { PaintController } from './PaintController';
+import { TapController } from './TapController';
 
 /**
  * The plot: an empty building area with a sandy visitor path around the edge,
@@ -40,6 +44,10 @@ export class ZooScene extends Phaser.Scene {
   /** A paint stroke in progress, shown but not yet saved. */
   private draft: Zoo | null = null;
   private paintTool: PaintTool | null = null;
+  private enclosureLayer!: EnclosureLayer;
+  private banner!: MessageBanner;
+  /** The square the child tapped to check its enclosure. Re-checked after every change. */
+  private checkedSquare: Square | null = null;
   private readonly storage = browserStorage();
 
   constructor() {
@@ -51,11 +59,13 @@ export class ZooScene extends Phaser.Scene {
     this.groundLayer = new GroundLayer(this);
     this.lines = this.add.graphics().setDepth(DEPTH.gridLines);
     this.itemLayer = new ItemLayer(this);
+    this.enclosureLayer = new EnclosureLayer(this);
     this.history = createHistory(loadZoo(this.storage, featureCatalogue));
 
     const ui = document.getElementById('ui');
     if (!ui) throw new Error('Missing #ui element');
     this.ui = ui;
+    this.banner = createMessageBanner(ui);
 
     this.controls = createControls(ui, {
       zoomIn: () => this.cameraController.zoomBy(CAMERA.buttonZoomStep),
@@ -87,6 +97,7 @@ export class ZooScene extends Phaser.Scene {
       },
       commit: (next) => this.commit(next),
     });
+    new TapController(this, () => this.paintTool === null, (square) => this.toggleCheck(square));
     this.refresh();
 
     this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
@@ -184,6 +195,27 @@ export class ZooScene extends Phaser.Scene {
     const zoo = this.draft ?? this.history.present;
     this.groundLayer.render(zoo);
     this.itemLayer.render(zoo);
+    this.showCheck(zoo);
+  }
+
+  /** Tap a square to check its enclosure; tap it again (or the path) to stop checking. */
+  private toggleCheck(square: Square): void {
+    const same = this.checkedSquare?.col === square.col && this.checkedSquare.row === square.row;
+    this.checkedSquare = same ? null : square;
+    this.showCheck(this.draft ?? this.history.present);
+  }
+
+  /** Glow for a closed area, gap markers for an almost-closed one, with a message either way. */
+  private showCheck(zoo: Zoo): void {
+    const check = this.checkedSquare ? checkArea(zoo.fences, this.checkedSquare) : null;
+    if (!check || check.kind === 'none') {
+      this.checkedSquare = null;
+      this.enclosureLayer.show(null);
+      this.banner.hide();
+      return;
+    }
+    this.enclosureLayer.show(check);
+    this.banner.show(ENCLOSURE_MESSAGES[check.kind]);
   }
 
   /** Sandy path over the whole plot, then the plain, unpainted building area on top. */

@@ -22,6 +22,12 @@ export interface PropertyInfo {
   icon: string;
 }
 
+/** A short message for the child, always shown with its icon. */
+export interface Message {
+  icon: string;
+  text: string;
+}
+
 export interface Material {
   id: string;
   label: string;
@@ -99,6 +105,9 @@ export const FENCE_MATERIALS: readonly Material[] = (rawFeatures.fence?.material
 });
 
 const fenceMaterialIds = new Set(FENCE_MATERIALS.map((m) => m.id));
+
+/** Messages for the enclosure check: closed in, a gap, or not closed in at all. */
+export const ENCLOSURE_MESSAGES: Readonly<Record<'closed' | 'gap' | 'open', Message>> = data.enclosureMessages;
 
 export const featureCatalogue: Catalogue = {
   sizeOf: (kind) => featuresById.get(kind)?.size,

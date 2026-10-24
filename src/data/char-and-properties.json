@@ -58,6 +58,12 @@
     "failMessage": "This roof keeps out fresh air! 🌬 Try one with holes."
   },
 
+  "enclosureMessages": {
+    "closed": { "icon": "🛡", "text": "This area is closed in!" },
+    "gap":    { "icon": "🚧", "text": "There is a gap in the fence here!" },
+    "open":   { "icon": "🧱", "text": "This area is not closed in. Build a fence all the way around." }
+  },
+
   "animals": [
     {
       "id": "koi", "label": "Koi", "stars": 2, "size": [1, 1],
