@@ -122,7 +122,7 @@ There are no levels and no win screen. Progress is visible as more animals becom
 | Hut | Strong | Wind and rain break it, so no shelter |
 | Shade cover | **Not** transparent | Sunlight comes through, so no shade |
 | Floating island | Floats | It sinks |
-| Swing | Flexible | It can't swing |
+| Swing | Strong | It can't hold your weight, so it breaks |
 | Roof | Lets air through | Animals can't get fresh air |
 
 **Teaching note:** metal wire mesh is *not* marked transparent. Visitors see through its gaps, not through the metal itself.

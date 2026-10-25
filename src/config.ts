@@ -144,14 +144,29 @@ export const FALLBACK_PAINT_STYLE: PaintStyle = { colour: 0x999999, pattern: 'no
  * What an unsuitable material looks like, by the property it is missing. These are
  * placeholder pictures until the Art milestone (M8). The properties come from the data file.
  */
-export type ResultVisual = 'drain' | 'sink' | 'fall' | 'light' | 'still';
+export type ResultVisual = 'drain' | 'sink' | 'fall' | 'light';
 
 export const RESULT_VISUAL: Readonly<Record<string, ResultVisual>> = {
   waterproof: 'drain',
   floats: 'sink',
   strong: 'fall',
   transparent: 'light',
-  flexible: 'still',
+};
+
+/**
+ * Which placeholder picture each feature gets. This is only about how things look, so it
+ * is keyed by feature id (some jobs, like the hut and the swing, need the same property).
+ */
+export type ItemPicture = 'waterHolder' | 'island' | 'hut' | 'shade' | 'swing';
+
+export const ITEM_PICTURE: Readonly<Record<string, ItemPicture>> = {
+  deep_pool: 'waterHolder',
+  shallow_pond: 'waterHolder',
+  water_bowl: 'waterHolder',
+  floating_island: 'island',
+  hut: 'hut',
+  shade_cover: 'shade',
+  swing: 'swing',
 };
 
 export const RESULT_STYLE = {

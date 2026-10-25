@@ -3,6 +3,7 @@ import {
   FALLBACK_PAINT_STYLE,
   GHOST_STYLE,
   GRID,
+  ITEM_PICTURE,
   ITEM_STYLE,
   MATERIAL_STYLE,
   RESULT_STYLE,
@@ -164,7 +165,7 @@ export class ItemLayer {
       .setDepth(DEPTH.items + (feature.placeOn ? 0.1 : 0));
 
     const tweens: Phaser.Tweens.Tween[] = [];
-    const plays = visual === 'drain' || visual === 'sink' || visual === 'fall' || visual === 'light';
+    const plays = visual !== null;
     if (animate && plays && !this.reduceMotion) {
       look.progress = 0;
       tweens.push(
@@ -182,8 +183,8 @@ export class ItemLayer {
     }
     drawBody(graphics, look);
 
-    // A swing that suits its job gently sways.
-    if (feature.mustBe.flexible === true && check?.works && !this.reduceMotion) {
+    // A swing that is strong enough gently sways.
+    if (ITEM_PICTURE[feature.id] === 'swing' && check?.works && !this.reduceMotion) {
       tweens.push(
         scene.tweens.add({
           targets: body,
@@ -227,20 +228,25 @@ function drawBody(g: Phaser.GameObjects.Graphics, look: Look): void {
     ? (MATERIAL_STYLE[look.material] ?? FALLBACK_PAINT_STYLE)
     : { colour: TAB_COLOURS[feature.tab] ?? ITEM_STYLE.fallbackColour, pattern: 'none', patternColour: ITEM_STYLE.border };
 
-  // Which picture to draw depends on what the job needs (from the data file), not on the item's name.
-  if (feature.mustBe.waterproof === true) {
-    drawWaterHolder(g, look, x, y, w, h, style);
-  } else if (feature.mustBe.floats === true) {
-    drawIsland(g, look, x, y, w, h, style);
-  } else if (feature.mustBe.strong === true) {
-    drawHut(g, look, x, y, w, h, style);
-  } else if (feature.mustBe.transparent === false) {
-    drawShade(g, look, x, y, w, h, style);
-  } else if (feature.mustBe.flexible === true) {
-    drawSwing(g, x, y, w, h, style);
-  } else {
-    drawBlock(g, x, y, w, h, style);
-    outline(g, x, y, w, h);
+  switch (ITEM_PICTURE[feature.id]) {
+    case 'waterHolder':
+      drawWaterHolder(g, look, x, y, w, h, style);
+      break;
+    case 'island':
+      drawIsland(g, look, x, y, w, h, style);
+      break;
+    case 'hut':
+      drawHut(g, look, x, y, w, h, style);
+      break;
+    case 'shade':
+      drawShade(g, look, x, y, w, h, style);
+      break;
+    case 'swing':
+      drawSwing(g, look, x, y, w, h, style);
+      break;
+    default:
+      drawBlock(g, x, y, w, h, style);
+      outline(g, x, y, w, h);
   }
 
   // A gentle dashed outline marks a material that does not suit its job.
@@ -377,12 +383,27 @@ function drawShade(
   }
 }
 
-/** Swing: a frame with a seat of the chosen material. A swing that is not flexible just hangs still. */
-function drawSwing(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, style: PaintStyle): void {
+/**
+ * Swing: a frame with a seat of the chosen material. A swing that is not strong enough
+ * breaks: the ropes snap short and the seat drops to the ground.
+ */
+function drawSwing(
+  g: Phaser.GameObjects.Graphics,
+  look: Look,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  style: PaintStyle,
+): void {
+  const broken = look.visual === 'fall' ? look.progress : 0;
+  const ropeEnd = y + h * (0.7 - 0.4 * broken);
+  const seatTop = y + h * (0.65 + 0.07 * broken);
+
   g.lineStyle(4, ITEM_STYLE.border, 1);
   g.lineBetween(x, y + 2, x + w, y + 2);
-  g.lineBetween(x + w * 0.2, y + 2, x + w * 0.2, y + h * 0.7);
-  g.lineBetween(x + w * 0.8, y + 2, x + w * 0.8, y + h * 0.7);
-  drawBlock(g, x + w * 0.1, y + h * 0.65, w * 0.8, h * 0.28, style);
-  outline(g, x + w * 0.1, y + h * 0.65, w * 0.8, h * 0.28);
+  g.lineBetween(x + w * 0.2, y + 2, x + w * 0.2, ropeEnd);
+  g.lineBetween(x + w * 0.8, y + 2, x + w * 0.8, ropeEnd);
+  drawBlock(g, x + w * 0.1, seatTop, w * 0.8, h * 0.28, style);
+  outline(g, x + w * 0.1, seatTop, w * 0.8, h * 0.28);
 }

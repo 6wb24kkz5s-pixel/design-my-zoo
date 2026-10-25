@@ -41,7 +41,7 @@
     "rock_cave":       { "label": "Rock cave",       "tab": "shelter", "size": [2, 2] },
     "hut":             { "label": "Hut",             "tab": "shelter", "size": [2, 2], "materials": ["wood", "concrete", "fabric"],      "mustBe": { "strong": true },       "failMessage": "The hut fell down! This material is not strong. 💪" },
     "shade_cover":     { "label": "Shade cover",     "tab": "shelter", "size": [2, 2], "materials": ["glass", "wood", "fabric"],         "mustBe": { "transparent": false }, "failMessage": "The sun shines right through! Glass is transparent. ☀️" },
-    "swing":           { "label": "Swing",           "tab": "shelter", "size": [1, 1], "materials": ["metal", "wood", "fabric"],         "mustBe": { "flexible": true },     "failMessage": "It can't swing! This material is not flexible. 🌀" },
+    "swing":           { "label": "Swing",           "tab": "shelter", "size": [1, 1], "materials": ["metal", "wood", "fabric"],         "mustBe": { "strong": true },       "failMessage": "The swing broke! This material is not strong. 💪" },
     "fish_food":       { "label": "Fish food",       "tab": "food",    "size": [1, 1], "placeOn": "water" },
     "insects":         { "label": "Insects",         "tab": "food",    "size": [1, 1] },
     "seeds_fruit":     { "label": "Seeds and fruit", "tab": "food",    "size": [1, 1] },

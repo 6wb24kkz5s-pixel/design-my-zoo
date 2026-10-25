@@ -20,7 +20,7 @@ const EXPECTED_FAILURES: Record<string, string[]> = {
   floating_island: ['concrete', 'metal'],
   hut: ['fabric'],
   shade_cover: ['glass'],
-  swing: ['metal', 'wood'],
+  swing: ['fabric'],
   fence: ['clear_plastic', 'fabric'],
   roof: ['clear_plastic', 'glass'],
 };
@@ -33,7 +33,7 @@ const EXPECTED_MISSING: Record<string, string> = {
   floating_island: 'floats',
   hut: 'strong',
   shade_cover: 'transparent',
-  swing: 'flexible',
+  swing: 'strong',
   fence: 'strong',
   roof: 'letsAirThrough',
 };
