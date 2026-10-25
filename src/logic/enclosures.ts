@@ -72,6 +72,17 @@ export function regionOf(fences: SquareMap, square: Square): Square[] {
   return flood(square, isFence).squares;
 }
 
+/**
+ * The area around a square: every square reachable without crossing a fence, and whether
+ * it is closed in. A cheaper check than checkArea, because it never looks for gaps.
+ */
+export function areaInfo(fences: SquareMap, square: Square): { squares: Square[]; closed: boolean } {
+  const isFence: IsWall = (c, r) => fences[squareKey(c, r)] !== undefined;
+  if (!inBuildingArea(square.col, square.row) || isFence(square.col, square.row)) return { squares: [], closed: false };
+  const region = flood(square, isFence);
+  return { squares: region.squares, closed: !region.open };
+}
+
 /** Every area that is fully surrounded by fences. */
 export function findEnclosures(fences: SquareMap): Square[][] {
   const isFence: IsWall = (c, r) => fences[squareKey(c, r)] !== undefined;

@@ -369,6 +369,212 @@ body {
   min-height: 56px;
 }
 
+/* The panel that slides in from the right when an animal is tapped. It can scroll if it is long. */
+.side-panel {
+  position: absolute;
+  top: var(--top-bar-height);
+  right: 0;
+  bottom: var(--palette-height);
+  width: var(--panel-width);
+  max-width: 92%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-left: 4px solid #f4f1de;
+  background: rgba(47, 62, 70, 0.97);
+  transform: translateX(105%);
+  visibility: hidden;
+  transition:
+    transform 0.2s ease-out,
+    visibility 0s linear 0.2s;
+}
+
+.side-panel-open {
+  transform: none;
+  visibility: visible;
+  transition: transform 0.2s ease-out;
+}
+
+/* Scrolling up and down inside the panel is allowed (the rest of the overlay ignores touch moves). */
+#ui .side-panel,
+#ui .side-panel * {
+  touch-action: pan-y;
+}
+
+/* Keep the + / – buttons clear of the panel while it is open. */
+html.panel-open .zoom-buttons {
+  right: calc(var(--panel-width) + 16px);
+}
+
+.side-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.side-panel-picture {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border: 3px solid #1e2a30;
+  border-radius: 10px;
+  background: #fff1c9;
+}
+
+.side-panel-name {
+  flex: 1;
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.1;
+}
+
+.side-panel-close {
+  flex: 0 0 auto;
+  width: 48px;
+  padding: 0;
+}
+
+.side-panel-happy {
+  padding: 10px 12px;
+  border: 3px solid #ffd23f;
+  border-radius: 14px;
+  background: #3d5a66;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.side-panel-hearts,
+.side-panel-checklist {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.heart-row {
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #3d5a66;
+}
+
+.heart-row-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.heart-row-icon {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.heart-row-label {
+  flex: 1;
+}
+
+.heart-row-heart {
+  font-size: 34px;
+  line-height: 1;
+  color: #ff6b81;
+}
+
+/* An empty heart: only an outline, and a dashed border on the row. */
+.heart-row-empty {
+  border: 2px dashed #f4f1de;
+  background: transparent;
+}
+
+.heart-row-empty .heart-row-heart {
+  color: #f4f1de;
+}
+
+.heart-row-message {
+  margin: 6px 0 0;
+  font-size: 17px;
+  line-height: 1.3;
+}
+
+.side-panel-visitor {
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #3d5a66;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.side-panel-hint-button {
+  align-self: flex-start;
+  min-height: 52px;
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 2px dashed #f4f1de;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.check-row-met {
+  border-style: solid;
+  background: #2f7d44;
+}
+
+.check-row-heart {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.check-row-what {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+}
+
+.check-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.check-option-swatch {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #1e2a30;
+  border-radius: 4px;
+}
+
+.check-row-or {
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.check-row-tick {
+  width: 26px;
+  font-size: 24px;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .side-panel,
+  .side-panel-open {
+    transition: none;
+  }
+}
+
 /* Gentle message below the top bar, always with its icon. */
 .message-banner {
   position: absolute;

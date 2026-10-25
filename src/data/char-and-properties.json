@@ -68,6 +68,35 @@
     "needWater": { "icon": "💧", "text": "I need water!" }
   },
 
+  "heartMessages": {
+    "food":   "The {animal} is hungry! 🍎",
+    "water":  "The {animal} needs water! 💧",
+    "air":    "The {animal} needs fresh air! 🌬",
+    "home":   "The {animal} needs a better home! 🏡",
+    "safety": "The {animal} is not safe here! 🛡",
+    "eats":   "Shh! The {animal} might eat the {other}! 😮",
+    "eaten":  "The {animal} is not safe near the {other}! 😟"
+  },
+
+  "visitorMessages": {
+    "great": { "icon": "👀", "text": "Visitors can see the {animal} really well!" },
+    "okay":  { "icon": "👀", "text": "Visitors can see the {animal} a little." },
+    "none":  { "icon": "🔍", "text": "Visitors can't see the {animal}. Try a clear fence!" }
+  },
+
+  "happyMessage": { "icon": "😊", "text": "The {animal} is happy!" },
+
+  "hintLabels": {
+    "inWater":     { "icon": "💧", "text": "Be in the water" },
+    "airFlow":     { "icon": "🌬", "text": "No roof, or a roof with holes" },
+    "closedFence": { "icon": "🧱", "text": "A fence all the way round" },
+    "strongFence": { "icon": "💪", "text": "A strong fence" },
+    "noBigGaps":   { "icon": "🕸️", "text": "A fence with no big gaps" },
+    "roof":        { "icon": "🏠", "text": "A roof" },
+    "netRoof":     { "icon": "🏠", "text": "A roof with no big gaps" },
+    "noPredators": { "icon": "🐾", "text": "No animal that would eat it" }
+  },
+
   "notices": {
     "noRoom":         { "icon": "🐾", "text": "There is no room here. Move something first." },
     "needsWater":     { "icon": "💧", "text": "This only goes on water!" },

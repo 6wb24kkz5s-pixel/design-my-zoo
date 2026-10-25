@@ -3,7 +3,6 @@ import { PLOT_HEIGHT, PLOT_WIDTH } from '../camera';
 import { CAMERA, COLOURS, GRID, UNDO_LIMIT } from '../config';
 import {
   checkMaterial,
-  ENCLOSURE_MESSAGES,
   failMessageFor,
   featureCatalogue,
   FENCE_MATERIALS,
@@ -11,6 +10,7 @@ import {
   getGround,
   getMaterial,
   getMaterials,
+  NEEDS_DATA,
   NOTICES,
   ROOF_MATERIALS,
   type Message,
@@ -19,6 +19,7 @@ import { PIXEL_RATIO } from '../display';
 import { findFreeSpot } from '../logic/animals';
 import { checkArea } from '../logic/enclosures';
 import { canUndo, commit, createHistory, undo, type History } from '../logic/history';
+import { evaluateAnimal } from '../logic/needs';
 import type { PaintTool } from '../logic/paint';
 import { removeRoofArea, roofArea, type RoofTool } from '../logic/roofs';
 import { browserStorage, loadZoo, saveZoo } from '../logic/save';
@@ -38,9 +39,11 @@ import { confirmDialog } from '../ui/confirmDialog';
 import { createControls, type Controls } from '../ui/controls';
 import { pickMaterial } from '../ui/materialPicker';
 import { createMessageBanner, type MessageBanner } from '../ui/messageBanner';
+import { buildPanelView } from '../ui/needsView';
 import { createPaintIndicator, type PaintIndicator } from '../ui/paintIndicator';
 import { createPalette, tabIcon, type Palette } from '../ui/palette';
-import { AnimalLayer } from './AnimalLayer';
+import { createSidePanel, type SidePanel } from '../ui/sidePanel';
+import { AnimalLayer, type Mood } from './AnimalLayer';
 import { CameraController } from './CameraController';
 import { DEPTH } from './depth';
 import { DragController, type Moving } from './DragController';
@@ -80,6 +83,7 @@ export class ZooScene extends Phaser.Scene {
   private roofTool: RoofTool | null = null;
   private enclosureLayer!: EnclosureLayer;
   private banner!: MessageBanner;
+  private panel!: SidePanel;
   /** The animal the child tapped to check its enclosure. Re-checked after every change, wherever it moves. */
   private checkedAnimalId: string | null = null;
   private readonly storage = browserStorage();
@@ -102,6 +106,7 @@ export class ZooScene extends Phaser.Scene {
     if (!ui) throw new Error('Missing #ui element');
     this.ui = ui;
     this.banner = createMessageBanner(ui);
+    this.panel = createSidePanel(ui, () => this.closePanel());
 
     this.controls = createControls(ui, {
       zoomIn: () => this.cameraController.zoomBy(CAMERA.buttonZoomStep),
@@ -283,6 +288,20 @@ export class ZooScene extends Phaser.Scene {
     this.render();
     this.controls.setCanUndo(canUndo(this.history));
     this.controls.setAnimalsInZoo(this.history.present.animals.map((a) => a.animalId));
+    this.updateMoods();
+  }
+
+  /** Who is happy, and who just gained or lost hearts. Worked out after every saved change. */
+  private updateMoods(): void {
+    const zoo = this.history.present;
+    const moods = new Map<string, Mood>();
+    // Only the heart counts matter here, so skip the slow "is it a gap?" check, and share areas.
+    const options = { cache: new Map(), explain: false };
+    for (const animal of zoo.animals) {
+      const needs = evaluateAnimal(zoo, featureCatalogue, NEEDS_DATA, animal.animalId, options);
+      if (needs) moods.set(animal.animalId, { count: needs.heartCount, happy: needs.happy });
+    }
+    this.animalLayer.setMoods(moods);
   }
 
   private render(): void {
@@ -409,18 +428,28 @@ export class ZooScene extends Phaser.Scene {
     this.reportMaterial(item.kind, chosen);
   }
 
-  /** Glow for a closed area, gap markers for an almost-closed one, with a message either way. */
+  /**
+   * The tapped animal: a glow round its enclosure (or markers on its gaps), and the side panel
+   * with its hearts, which keeps up to date as the zoo changes.
+   */
   private showCheck(zoo: Zoo): void {
     const animal = zoo.animals.find((a) => a.animalId === this.checkedAnimalId);
     const check = animal ? checkArea(zoo.fences, { col: animal.col, row: animal.row }) : null;
-    if (!check || check.kind === 'none') {
+    const view = animal ? buildPanelView(zoo, animal.animalId) : null;
+    this.banner.hide();
+    if (!check || !view) {
       this.checkedAnimalId = null;
       this.enclosureLayer.show(null);
-      this.banner.hide();
+      this.panel.show(null);
       return;
     }
     this.enclosureLayer.show(check);
-    this.banner.show(ENCLOSURE_MESSAGES[check.kind]);
+    this.panel.show(view);
+  }
+
+  private closePanel(): void {
+    this.checkedAnimalId = null;
+    this.showCheck(this.draft ?? this.history.present);
   }
 
   /** Sandy path over the whole plot, then the plain, unpainted building area on top. */

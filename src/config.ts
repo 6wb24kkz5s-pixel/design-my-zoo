@@ -31,6 +31,21 @@ export const UI = {
   topBarHeight: 64,
   zoomButtonSize: 64,
   paletteHeight: 168,
+  /** Width of the side panel that slides in when an animal is tapped. */
+  panelWidth: 330,
+} as const;
+
+/** The little faces that float above an animal when its hearts change, and the badge on a happy animal. */
+export const EMOTE = {
+  gain: '😊',
+  lose: '😟',
+  becameHappy: '🥰',
+  /** How far an emote rises, in world pixels, and how long it takes to fade away. */
+  rise: 34,
+  ms: 1400,
+  fontSize: 26,
+  happyBadge: '❤️',
+  badgeFontSize: 18,
 } as const;
 
 /** How many actions Undo remembers (GDD section 7). */

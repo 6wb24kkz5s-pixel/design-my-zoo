@@ -156,6 +156,16 @@ The **👀 visitor meter** is shown per enclosure:
 
 An animal is **happy** when all five hearts are full. The visitor meter is shown separately and does not affect happiness.
 
+**How the checks work:**
+- An animal's **area** is the enclosure it is in. If it is not fenced in, it is the open ground around it.
+- A feature only counts if its material suits its job. A hut that fell down, a shade cover that lets the sun through, a broken swing or a drained pool does not count as shelter, shade, a place to sit or water.
+- A small animal fails safety if any fence piece round it has big gaps (wire mesh). A flying animal fails safety without a roof. A small flying animal also fails if its roof has big gaps.
+- **Who eats whom:** the warning is on by default. If an animal that would eat another shares its area, both animals' safety hearts are empty. Each shows its own message ("Shh — the crocodile might eat its neighbours! 🐊" for the one that would eat, and "…is not safe near the…" for the other). Animals in separate fenced areas do not affect each other.
+
+**What you see:**
+- Tapping an animal opens a **side panel** with its five hearts (a filled ♥ or an empty ♡), a gentle message with an icon under each empty one, the 👀 visitor meter, and the 💡 hint. The enclosure glow and gap markers stay on the plot.
+- A small ❤️ badge shows on every happy animal, and a 😊, 😟 or 🥰 floats up when something changes its hearts. There are no scores or counts.
+
 ## 12. Feedback and gotchas
 - All messages come from `char-and-properties.json`. Each is short, uses an icon, and suggests what to try.
 - Examples:
@@ -196,6 +206,6 @@ An animal is **happy** when all five hearts are full. The visitor meter is shown
 Signboards, levels, multiplayer, logins, scores, timers or screen freezing, a class gallery, and a separate 3D view.
 
 ## 18. Open questions
-1. Check the foods and the "flying beetle" against textbook pages 71–72 and the TLG.
-2. Should the "who eats who" warning be on by default?
+1. Check the foods and the "flying beetle" against textbook pages 71–72 and the TLG. (Until this is checked, the game follows the data file: the beetle flies.)
+2. ~~Should the "who eats who" warning be on by default?~~ Decided: yes, it is on (see section 11).
 3. Should there be a "Save picture" button to export the whole zoo as an image? Students could use iPad screenshots instead.

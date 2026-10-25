@@ -2,6 +2,7 @@
 // never from hard-coded values.
 
 import { MATERIAL_OK, missingProperty, type MaterialCheck } from '../logic/materials';
+import type { HintRule, NeedsData } from '../logic/needs';
 import type { Catalogue, Size } from '../logic/zoo';
 import data from './char-and-properties.json';
 
@@ -190,6 +191,64 @@ export const BUBBLES: Readonly<Record<'needWater', Message>> = data.bubbles;
 
 /** Short notices shown in the message banner, e.g. when a new animal has nowhere to go. */
 export const NOTICES: Readonly<Record<'noRoom' | 'needsWater' | 'roofNeedsFence', Message>> = data.notices;
+
+/** An animal exactly as it is written in the data file. */
+interface RawAnimal {
+  id: string;
+  label: string;
+  size: number[];
+  livesInWater: boolean;
+  flies: boolean;
+  small: boolean;
+  food: string[];
+  water: string[];
+  home: string[][];
+  eats: string[];
+  messages: Record<string, string>;
+}
+
+const rawAnimals = data.animals as unknown as RawAnimal[];
+
+/** What the needs engine reads from the data file. */
+export const NEEDS_DATA: NeedsData = {
+  animals: rawAnimals.map((a) => ({
+    id: a.id,
+    label: a.label,
+    food: a.food,
+    water: a.water,
+    home: a.home,
+    eats: a.eats,
+    flies: a.flies,
+    small: a.small,
+    livesInWater: a.livesInWater,
+  })),
+  gapsOf: (id) => {
+    const gaps = rawMaterials[id]?.gaps;
+    return gaps === 'small' || gaps === 'big' ? gaps : 'none';
+  },
+  isTransparent: (id) => rawMaterials[id]?.transparent === true,
+};
+
+/** An animal's own messages from the data file (food, home, air, water, safety, eats), if it has them. */
+export function getAnimalMessages(animalId: string): Readonly<Record<string, string>> {
+  return rawAnimals.find((a) => a.id === animalId)?.messages ?? {};
+}
+
+/** Generic messages for an empty heart, with {animal} and {other} to fill in. */
+export const HEART_MESSAGES: Readonly<Record<'food' | 'water' | 'air' | 'home' | 'safety' | 'eats' | 'eaten', string>> =
+  data.heartMessages;
+
+export const VISITOR_MESSAGES: Readonly<Record<'great' | 'okay' | 'none', Message>> = data.visitorMessages;
+
+export const HAPPY_MESSAGE: Message = data.happyMessage;
+
+/** The wording for each line of the 💡 checklist that is a rule rather than an item. */
+export const HINT_LABELS: Readonly<Record<HintRule, Message>> = data.hintLabels;
+
+/** Fills in {animal} and {other} in a message from the data file. */
+export function fillMessage(text: string, values: { animal?: string; other?: string }): string {
+  return text.replace('{animal}', values.animal ?? '').replace('{other}', values.other ?? '');
+}
 
 export interface Animal {
   id: string;

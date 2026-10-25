@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { ANIMAL_STYLE, GRID, ITEM_STYLE } from '../config';
+import { ANIMAL_STYLE, EMOTE, GRID, ITEM_STYLE } from '../config';
 import { BUBBLES, featureCatalogue, getAnimal, type Animal } from '../data/content';
 import { needsWater } from '../logic/animals';
 import type { Zoo } from '../logic/zoo';
@@ -9,15 +9,27 @@ import { createBubbleText, createLabel } from './labels';
 interface AnimalView {
   container: Phaser.GameObjects.Container;
   bubble: Phaser.GameObjects.Container;
+  /** A small ❤️ that shows while the animal is happy. */
+  badge: Phaser.GameObjects.Text;
+  width: number;
+}
+
+/** How happy an animal is, as far as the plot needs to know. */
+export interface Mood {
+  /** How many of its five hearts are full. */
+  count: number;
+  happy: boolean;
 }
 
 /**
  * Draws the animals as placeholder blocks that gently bob. A fish that is not
- * in water gets a 💧 speech bubble. Views are kept between redraws, so the bob
+ * in water gets a 💧 speech bubble, a happy animal gets a ❤️ badge, and an emote floats
+ * up when something changes its hearts. Views are kept between redraws, so the bob
  * does not restart every time something changes.
  */
 export class AnimalLayer {
   private readonly views = new Map<string, AnimalView>();
+  private readonly hearts = new Map<string, number>();
   private readonly reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   private created = 0;
 
@@ -41,7 +53,41 @@ export class AnimalLayer {
       if (present.has(id)) continue;
       view.container.destroy();
       this.views.delete(id);
+      this.hearts.delete(id);
     }
+  }
+
+  /**
+   * Shows who is happy, and floats an emote above an animal whose hearts just changed:
+   * 😊 for a heart gained, 😟 for one lost, 🥰 when it has just become happy. The first
+   * time an animal is seen (when the game loads, or it is added) nothing floats.
+   */
+  setMoods(moods: ReadonlyMap<string, Mood>): void {
+    for (const [id, view] of this.views) {
+      const mood = moods.get(id);
+      if (!mood) continue;
+      view.badge.setVisible(mood.happy);
+
+      const before = this.hearts.get(id);
+      if (before !== undefined && before !== mood.count) {
+        this.emote(view, mood.happy ? EMOTE.becameHappy : mood.count > before ? EMOTE.gain : EMOTE.lose);
+      }
+      this.hearts.set(id, mood.count);
+    }
+  }
+
+  private emote(view: AnimalView, face: string): void {
+    const x = view.container.x + view.width / 2;
+    const y = view.container.y - 6;
+    const text = createBubbleText(this.scene, face, EMOTE.fontSize, '#1e2a30').setPosition(x, y).setDepth(DEPTH.animals + 0.5);
+    this.scene.tweens.add({
+      targets: text,
+      y: this.reduceMotion ? y : y - EMOTE.rise,
+      alpha: { from: 1, to: 0 },
+      duration: EMOTE.ms,
+      ease: 'Sine.easeOut',
+      onComplete: () => text.destroy(),
+    });
   }
 
   private create(animal: Animal): AnimalView {
@@ -61,7 +107,10 @@ export class AnimalLayer {
 
     const body = this.scene.add.container(0, 0, [block, label]);
     const bubble = this.makeBubble(width);
-    const container = this.scene.add.container(0, 0, [body, bubble]).setDepth(DEPTH.animals);
+    const badge = createBubbleText(this.scene, EMOTE.happyBadge, EMOTE.badgeFontSize, '#1e2a30')
+      .setPosition(width - 8, 8)
+      .setVisible(false);
+    const container = this.scene.add.container(0, 0, [body, bubble, badge]).setDepth(DEPTH.animals);
 
     if (!this.reduceMotion) {
       this.scene.tweens.add({
@@ -76,7 +125,7 @@ export class AnimalLayer {
     }
     this.created++;
 
-    const view = { container, bubble };
+    const view = { container, bubble, badge, width };
     this.views.set(animal.id, view);
     return view;
   }
