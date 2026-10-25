@@ -24,7 +24,9 @@ export function createMessageBanner(root: HTMLElement): MessageBanner {
 
   return {
     show(message) {
+      // Some messages carry their own icon inside the words, so they need none in front.
       icon.textContent = message.icon;
+      icon.hidden = message.icon === '';
       text.textContent = message.text;
       banner.hidden = false;
     },

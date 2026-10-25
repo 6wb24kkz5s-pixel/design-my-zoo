@@ -69,7 +69,9 @@
   },
 
   "notices": {
-    "noRoom": { "icon": "🐾", "text": "There is no room here. Move something first." }
+    "noRoom":         { "icon": "🐾", "text": "There is no room here. Move something first." },
+    "needsWater":     { "icon": "💧", "text": "This only goes on water!" },
+    "roofNeedsFence": { "icon": "🏠", "text": "A roof needs a fence all the way around." }
   },
 
   "animals": [

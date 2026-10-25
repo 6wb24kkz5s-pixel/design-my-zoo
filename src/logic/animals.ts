@@ -1,7 +1,16 @@
 // Rules about animals that go beyond simple placing.
 
 import { GRID } from '../config';
-import { animalRect, canPlaceAnimal, itemAt, type Catalogue, type PlacedAnimal, type Square, type Zoo } from './zoo';
+import {
+  animalRect,
+  canPlaceAnimal,
+  itemsAt,
+  type Catalogue,
+  type PlacedAnimal,
+  type PlacedItem,
+  type Square,
+  type Zoo,
+} from './zoo';
 
 /**
  * The best free spot for a new animal, as its top-left square: the one whose
@@ -26,14 +35,22 @@ export function findFreeSpot(zoo: Zoo, catalogue: Catalogue, animalId: string, n
   return best;
 }
 
-/** True if this animal must be in water but is not standing entirely on pool or pond squares. */
+/** A pool or pond that is not made of a waterproof material leaks, so it holds no water. */
+function holdsWater(catalogue: Catalogue, pool: PlacedItem): boolean {
+  return !pool.material || catalogue.materialCheck(pool.kind, pool.material).works;
+}
+
+/**
+ * True if this animal must be in water but is not standing entirely on pool or
+ * pond squares that hold water.
+ */
 export function needsWater(zoo: Zoo, catalogue: Catalogue, animal: PlacedAnimal): boolean {
   if (!catalogue.livesInWater(animal.animalId)) return false;
   const { col, row, width, height } = animalRect(animal, catalogue);
   for (let c = col; c < col + width; c++) {
     for (let r = row; r < row + height; r++) {
-      const item = itemAt(zoo, catalogue, c, r);
-      if (!item || !catalogue.isWaterKind(item.kind)) return true;
+      const wet = itemsAt(zoo, catalogue, c, r).some((i) => catalogue.isWaterKind(i.kind) && holdsWater(catalogue, i));
+      if (!wet) return true;
     }
   }
   return false;

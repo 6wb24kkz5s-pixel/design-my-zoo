@@ -1,14 +1,15 @@
 import Phaser from 'phaser';
 import { GRID } from '../config';
-import { featureCatalogue, getAnimal, getFeature } from '../data/content';
+import { featureCatalogue, getAnimal, getFeature, NOTICES, type Message } from '../data/content';
 import {
   animalAt,
+  canMoveItem,
   canPlace,
   canPlaceAnimal,
+  isOnWater,
   itemAt,
   moveAnimal,
   moveItem,
-  placeItem,
   removeAnimal,
   removeItem,
   type PlacedAnimal,
@@ -34,8 +35,11 @@ export interface DragHost {
   commit(next: Zoo): void;
   setBinHover(active: boolean): void;
   setMoving(moving: Moving | null): void;
-  /** In paint mode one finger paints, so placed things cannot be picked up. */
+  /** In paint and roof mode one finger does something else, so placed things cannot be picked up. */
   isPainting(): boolean;
+  /** A new item from the palette was dropped where it fits. The host asks for a material if it needs one. */
+  dropNew(kind: string, col: number, row: number): void;
+  showNotice(message: Message): void;
 }
 
 type DragSource =
@@ -179,7 +183,7 @@ export class DragController {
       case 'palette':
         return canPlace(zoo, featureCatalogue, source.kind, col, row);
       case 'item':
-        return canPlace(zoo, featureCatalogue, source.item.kind, col, row, source.item.id);
+        return canMoveItem(zoo, featureCatalogue, source.item.id, col, row);
       case 'animal':
         return canPlaceAnimal(zoo, featureCatalogue, source.animal.animalId, col, row);
     }
@@ -194,17 +198,30 @@ export class DragController {
     const { source, target } = drag;
     let next: Zoo | null = null;
     if (drag.overBin && source.type === 'item') {
-      next = removeItem(zoo, source.item.id);
+      next = removeItem(zoo, featureCatalogue, source.item.id);
     } else if (drag.overBin && source.type === 'animal') {
       next = removeAnimal(zoo, source.animal.animalId);
     } else if (target?.fits) {
-      if (source.type === 'palette') next = placeItem(zoo, featureCatalogue, source.kind, target.col, target.row);
+      if (source.type === 'palette') {
+        // The host may ask for a material before it places the new item.
+        this.host.dropNew(source.kind, target.col, target.row);
+        return;
+      }
       if (source.type === 'item') next = moveItem(zoo, featureCatalogue, source.item.id, target.col, target.row);
       if (source.type === 'animal') {
         next = moveAnimal(zoo, featureCatalogue, source.animal.animalId, target.col, target.row);
       }
+    } else if (target && source.type !== 'animal' && this.missedWater(zoo, source, target)) {
+      this.host.showNotice(NOTICES.needsWater);
     }
     if (next) this.host.commit(next);
+  }
+
+  /** True if a water-only item (plants, island, shrimp, fish food) was dropped somewhere that is not water. */
+  private missedWater(zoo: Zoo, source: DragSource, target: { col: number; row: number }): boolean {
+    const kind = source.type === 'palette' ? source.kind : source.type === 'item' ? source.item.kind : null;
+    if (!kind || featureCatalogue.placeOn(kind) !== 'water') return false;
+    return !isOnWater(zoo, featureCatalogue, kind, target.col, target.row);
   }
 
   private end(): void {

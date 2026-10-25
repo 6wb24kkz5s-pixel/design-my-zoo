@@ -65,6 +65,13 @@ function flood(start: Square, isWall: IsWall): Region {
   return { squares, keys, open };
 }
 
+/** Every square reachable from `square` without crossing a fence: its enclosure, or the open area around it. */
+export function regionOf(fences: SquareMap, square: Square): Square[] {
+  const isFence: IsWall = (c, r) => fences[squareKey(c, r)] !== undefined;
+  if (!inBuildingArea(square.col, square.row) || isFence(square.col, square.row)) return [];
+  return flood(square, isFence).squares;
+}
+
 /** Every area that is fully surrounded by fences. */
 export function findEnclosures(fences: SquareMap): Square[][] {
   const isFence: IsWall = (c, r) => fences[squareKey(c, r)] !== undefined;

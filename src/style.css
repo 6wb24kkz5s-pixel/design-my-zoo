@@ -387,6 +387,11 @@ body {
   font-size: 22px;
   font-weight: 700;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* Touches pass straight through a message to the plot below it. (The "#ui > *" rule above would
+   otherwise turn them back on, so this needs the same weight.) */
+#ui > .message-banner {
   pointer-events: none;
 }
 
@@ -504,6 +509,18 @@ body {
 
 .picker-back {
   min-height: 56px;
+}
+
+/* The material it is made of now: a thick outline and a "✓ Now" label, so colour is not the only signal. */
+.picker-card-current {
+  border-color: #2f7d44;
+  border-width: 5px;
+}
+
+.picker-now {
+  font-size: 15px;
+  font-weight: 700;
+  color: #2f7d44;
 }
 
 .palette-swatch span {

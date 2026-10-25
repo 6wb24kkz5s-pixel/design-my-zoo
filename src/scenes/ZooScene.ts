@@ -2,26 +2,44 @@ import Phaser from 'phaser';
 import { PLOT_HEIGHT, PLOT_WIDTH } from '../camera';
 import { CAMERA, COLOURS, GRID, UNDO_LIMIT } from '../config';
 import {
+  checkMaterial,
   ENCLOSURE_MESSAGES,
+  failMessageFor,
   featureCatalogue,
   FENCE_MATERIALS,
+  getFeature,
   getGround,
   getMaterial,
+  getMaterials,
   NOTICES,
+  ROOF_MATERIALS,
+  type Message,
 } from '../data/content';
 import { PIXEL_RATIO } from '../display';
 import { findFreeSpot } from '../logic/animals';
 import { checkArea } from '../logic/enclosures';
 import { canUndo, commit, createHistory, undo, type History } from '../logic/history';
 import type { PaintTool } from '../logic/paint';
+import { removeRoofArea, roofArea, type RoofTool } from '../logic/roofs';
 import { browserStorage, loadZoo, saveZoo } from '../logic/save';
-import { animalAt, EMPTY_ZOO, isEmptyZoo, placeAnimal, type Square, type Zoo } from '../logic/zoo';
+import {
+  animalAt,
+  EMPTY_ZOO,
+  isEmptyZoo,
+  itemsAt,
+  placeAnimal,
+  placeItem,
+  setItemMaterial,
+  type PlacedItem,
+  type Square,
+  type Zoo,
+} from '../logic/zoo';
 import { confirmDialog } from '../ui/confirmDialog';
 import { createControls, type Controls } from '../ui/controls';
 import { pickMaterial } from '../ui/materialPicker';
 import { createMessageBanner, type MessageBanner } from '../ui/messageBanner';
 import { createPaintIndicator, type PaintIndicator } from '../ui/paintIndicator';
-import { createPalette, type Palette } from '../ui/palette';
+import { createPalette, tabIcon, type Palette } from '../ui/palette';
 import { AnimalLayer } from './AnimalLayer';
 import { CameraController } from './CameraController';
 import { DEPTH } from './depth';
@@ -30,11 +48,12 @@ import { EnclosureLayer } from './EnclosureLayer';
 import { GroundLayer } from './GroundLayer';
 import { ItemLayer } from './ItemLayer';
 import { PaintController } from './PaintController';
+import { RoofLayer } from './RoofLayer';
 import { TapController } from './TapController';
 
 /**
  * The plot: an empty building area with a sandy visitor path around the edge,
- * drawn once in world space, with painted ground, fences, placed items and
+ * drawn once in world space, with painted ground, fences, placed items, roofs and
  * animals on top. The camera pans and zooms over it.
  */
 export class ZooScene extends Phaser.Scene {
@@ -45,6 +64,7 @@ export class ZooScene extends Phaser.Scene {
   private paintController!: PaintController;
   private groundLayer!: GroundLayer;
   private itemLayer!: ItemLayer;
+  private roofLayer!: RoofLayer;
   private animalLayer!: AnimalLayer;
   /** The item or animal being dragged on the plot, drawn faded until it lands. */
   private moving: Moving | null = null;
@@ -56,6 +76,8 @@ export class ZooScene extends Phaser.Scene {
   /** A paint stroke in progress, shown but not yet saved. */
   private draft: Zoo | null = null;
   private paintTool: PaintTool | null = null;
+  /** Roof mode: tap inside a fenced-in area to roof it (or take its roof off). Not on at the same time as a paint tool. */
+  private roofTool: RoofTool | null = null;
   private enclosureLayer!: EnclosureLayer;
   private banner!: MessageBanner;
   /** The animal the child tapped to check its enclosure. Re-checked after every change, wherever it moves. */
@@ -71,6 +93,7 @@ export class ZooScene extends Phaser.Scene {
     this.groundLayer = new GroundLayer(this);
     this.lines = this.add.graphics().setDepth(DEPTH.gridLines);
     this.itemLayer = new ItemLayer(this);
+    this.roofLayer = new RoofLayer(this);
     this.animalLayer = new AnimalLayer(this);
     this.enclosureLayer = new EnclosureLayer(this);
     this.history = createHistory(loadZoo(this.storage, featureCatalogue));
@@ -92,8 +115,10 @@ export class ZooScene extends Phaser.Scene {
       onCardPointerDown: (kind, event) => this.dragController.startFromPalette(kind, event),
       onToolTap: (tool) => this.toggleTool(tool),
       onFenceTap: () => void this.chooseFence(),
+      onRoofTap: () => void this.chooseRoof(),
+      onNoRoofTap: () => this.toggleNoRoof(),
     });
-    this.paintIndicator = createPaintIndicator(ui, () => this.setTool(null));
+    this.paintIndicator = createPaintIndicator(ui, () => this.stopTools());
 
     this.cameraController = new CameraController(this, this.controls.setZoomState);
     this.dragController = new DragController(this, this.itemLayer, {
@@ -104,7 +129,9 @@ export class ZooScene extends Phaser.Scene {
         this.moving = moving;
         this.render();
       },
-      isPainting: () => this.paintTool !== null,
+      isPainting: () => this.paintTool !== null || this.roofTool !== null,
+      dropNew: (kind, col, row) => void this.dropNew(kind, col, row),
+      showNotice: (message) => this.showNotice(message),
     });
     this.paintController = new PaintController(this, {
       tool: () => this.paintTool,
@@ -113,9 +140,13 @@ export class ZooScene extends Phaser.Scene {
         this.draft = draft;
         this.render();
       },
-      commit: (next) => this.commit(next),
+      commit: (next) => {
+        this.commit(next);
+        // A fence that is not strong gets its gentle message once the stroke is finished.
+        if (this.paintTool?.layer === 'fence' && this.paintTool.value) this.reportMaterial('fence', this.paintTool.value);
+      },
     });
-    new TapController(this, () => this.paintTool === null, (square) => this.toggleCheck(square));
+    new TapController(this, () => this.paintTool === null, (square) => this.onTap(square));
     this.refresh();
 
     this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
@@ -159,12 +190,56 @@ export class ZooScene extends Phaser.Scene {
     if (material) this.setTool({ layer: 'fence', value: material });
   }
 
+  /** The Roof tool: turn roofing off if it is on, otherwise choose a roof material first. */
+  private async chooseRoof(): Promise<void> {
+    if (this.roofTool?.material) {
+      this.setRoofTool(null);
+      return;
+    }
+    this.cancelGestures();
+    const material = await pickMaterial(
+      this.ui,
+      { icon: tabIcon('shelter'), title: 'Choose a material for your roof' },
+      ROOF_MATERIALS,
+    );
+    if (material) this.setRoofTool({ material });
+  }
+
+  /** The "No roof" tool takes a roof off the area you tap. Tap it again to stop. */
+  private toggleNoRoof(): void {
+    this.setRoofTool(this.roofTool?.material === null ? null : { material: null });
+  }
+
   private setTool(tool: PaintTool | null): void {
     this.paintController.cancel();
     this.paintTool = tool;
-    this.palette.setActiveTool(tool);
-    if (tool) {
-      this.paintIndicator.show(...describeTool(tool));
+    if (tool) this.roofTool = null;
+    this.syncTools();
+  }
+
+  private setRoofTool(tool: RoofTool | null): void {
+    this.paintController.cancel();
+    this.roofTool = tool;
+    if (tool) this.paintTool = null;
+    this.syncTools();
+  }
+
+  /** ✋ Done: back to normal drag mode. */
+  private stopTools(): void {
+    this.paintController.cancel();
+    this.paintTool = null;
+    this.roofTool = null;
+    this.syncTools();
+  }
+
+  /** Lights up the active tool in the palette and shows (or hides) the sign above it. */
+  private syncTools(): void {
+    this.palette.setActiveTool(this.paintTool);
+    this.palette.setActiveRoof(this.roofTool);
+    if (this.paintTool) {
+      this.paintIndicator.show(...describeTool(this.paintTool));
+    } else if (this.roofTool) {
+      this.paintIndicator.show(...describeRoof(this.roofTool));
     } else {
       this.paintIndicator.hide();
     }
@@ -214,6 +289,7 @@ export class ZooScene extends Phaser.Scene {
     const zoo = this.draft ?? this.history.present;
     this.groundLayer.render(zoo);
     this.itemLayer.render(zoo, this.moving?.itemId);
+    this.roofLayer.render(zoo);
     this.animalLayer.render(zoo, this.moving?.animalId);
     this.showCheck(zoo);
   }
@@ -229,27 +305,108 @@ export class ZooScene extends Phaser.Scene {
     if (next) {
       this.commit(next);
     } else {
-      this.showNotice();
+      this.showNotice(NOTICES.noRoom);
     }
   }
 
-  /** "No room" message. The next touch anywhere puts the enclosure message (if any) back. */
-  private showNotice(): void {
-    this.banner.show(NOTICES.noRoom);
+  /** A gentle message. The next touch anywhere puts the enclosure message (if any) back. */
+  private showNotice(message: Message): void {
+    this.banner.show(message);
     window.addEventListener('pointerdown', () => this.showCheck(this.draft ?? this.history.present), {
       once: true,
     });
   }
 
+  /** If this material does not suit its job, say so gently. The job is a feature id, "fence" or "roof". */
+  private reportMaterial(job: string, material: string): void {
+    if (checkMaterial(job, material).works) return;
+    const message = failMessageFor(job);
+    if (message) this.showNotice(message);
+  }
+
   /**
-   * Tap an animal to check its enclosure; tap it again to stop checking.
-   * Tapping anywhere else (empty ground, an item) just clears the check.
+   * One tap on the plot. In roof mode it roofs (or un-roofs) the area. Otherwise:
+   * tap an animal to check its enclosure (tap it again to stop), tap an item that has a
+   * material to change it, and tap anywhere else to clear the check.
    */
-  private toggleCheck(square: Square): void {
+  private onTap(square: Square): void {
     const zoo = this.draft ?? this.history.present;
-    const tapped = animalAt(zoo, featureCatalogue, square.col, square.row)?.animalId ?? null;
-    this.checkedAnimalId = tapped !== null && tapped !== this.checkedAnimalId ? tapped : null;
+    if (this.roofTool) {
+      this.applyRoof(square);
+      return;
+    }
+
+    const animal = animalAt(zoo, featureCatalogue, square.col, square.row);
+    this.checkedAnimalId = animal && animal.animalId !== this.checkedAnimalId ? animal.animalId : null;
     this.showCheck(zoo);
+    if (animal) return;
+
+    // A water-only item (a plant) floats on a pool, so look at the top item first.
+    const withMaterial = itemsAt(zoo, featureCatalogue, square.col, square.row).filter(
+      (item) => featureCatalogue.materialsFor(item.kind).length > 0,
+    );
+    const item = withMaterial.find((i) => featureCatalogue.placeOn(i.kind) !== null) ?? withMaterial[0];
+    if (item) void this.changeMaterial(item);
+  }
+
+  /** Roof mode: put a roof on the fenced-in area that was tapped, or take its roof off. */
+  private applyRoof(square: Square): void {
+    const tool = this.roofTool;
+    if (!tool) return;
+    const zoo = this.history.present;
+
+    if (tool.material === null) {
+      const next = removeRoofArea(zoo, square);
+      if (next !== zoo) this.commit(next);
+      return;
+    }
+    const result = roofArea(zoo, featureCatalogue, square, tool.material);
+    if (!result.ok) {
+      if (result.reason === 'needsFence') this.showNotice(NOTICES.roofNeedsFence);
+      return;
+    }
+    if (result.zoo !== zoo) this.commit(result.zoo);
+    this.reportMaterial('roof', tool.material);
+  }
+
+  /** A new item was dropped from the palette where it fits. Ask for its material first, if it has a choice. */
+  private async dropNew(kind: string, col: number, row: number): Promise<void> {
+    const feature = getFeature(kind);
+    if (!feature) return;
+
+    let material: string | undefined;
+    if (feature.materialIds.length > 0) {
+      const chosen = await pickMaterial(
+        this.ui,
+        { icon: tabIcon(feature.tab), title: `Choose a material for your ${feature.label.toLowerCase()}` },
+        getMaterials(feature.materialIds),
+      );
+      if (!chosen) return;
+      material = chosen;
+    }
+
+    const next = placeItem(this.history.present, featureCatalogue, kind, col, row, material);
+    if (!next) return;
+    this.commit(next);
+    if (material) this.reportMaterial(kind, material);
+  }
+
+  /** Tapping an item with a material choice reopens the picker, so you can try another one. */
+  private async changeMaterial(item: PlacedItem): Promise<void> {
+    const feature = getFeature(item.kind);
+    if (!feature) return;
+    this.cancelGestures();
+    const chosen = await pickMaterial(
+      this.ui,
+      { icon: tabIcon(feature.tab), title: `Choose a material for your ${feature.label.toLowerCase()}` },
+      getMaterials(feature.materialIds),
+      item.material,
+    );
+    if (!chosen) return;
+    const next = setItemMaterial(this.history.present, featureCatalogue, item.id, chosen);
+    if (!next) return;
+    this.commit(next);
+    this.reportMaterial(item.kind, chosen);
   }
 
   /** Glow for a closed area, gap markers for an almost-closed one, with a message either way. */
@@ -308,6 +465,12 @@ export class ZooScene extends Phaser.Scene {
       g.fillRect(inner + half, row * squareSize - half, PLOT_WIDTH - inner * 2 - width, width);
     }
   }
+}
+
+/** Icon and words for the roof sign, e.g. ["🏠", "Roofing: Fabric net"]. */
+function describeRoof(tool: RoofTool): [string, string] {
+  if (tool.material === null) return ['🧽', 'Taking roofs off: tap an area'];
+  return ['🏠', `Roofing: ${getMaterial(tool.material)?.label ?? tool.material}. Tap an area`];
 }
 
 /** Icon and words for the painting sign, e.g. ["🖌️", "Painting: Wood fence"]. */

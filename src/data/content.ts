@@ -1,6 +1,7 @@
 // Typed access to char-and-properties.json. Game code reads science content from here,
 // never from hard-coded values.
 
+import { MATERIAL_OK, missingProperty, type MaterialCheck } from '../logic/materials';
 import type { Catalogue, Size } from '../logic/zoo';
 import data from './char-and-properties.json';
 
@@ -9,6 +10,13 @@ export interface PlaceableFeature {
   label: string;
   tab: string;
   size: Size;
+  /** The materials it can be made of. Empty if there is no material choice. */
+  materialIds: readonly string[];
+  /** What the material must be for the job, e.g. { waterproof: true }. */
+  mustBe: Readonly<Record<string, boolean>>;
+  failMessage: string | null;
+  /** "water" means it can only go on pool or pond squares. */
+  placeOn: 'water' | null;
 }
 
 export interface GroundType {
@@ -42,6 +50,9 @@ interface RawFeature {
   paint?: boolean;
   materials?: string[];
   isWater?: boolean;
+  mustBe?: Record<string, boolean>;
+  failMessage?: string;
+  placeOn?: string;
 }
 
 interface RawMaterial {
@@ -56,7 +67,18 @@ const rawMaterials: Record<string, RawMaterial> = data.materials;
 export const PLACEABLE_FEATURES: readonly PlaceableFeature[] = Object.entries(rawFeatures).flatMap(([id, f]) => {
   const [width, height] = f.size ?? [];
   if (f.paint || width === undefined || height === undefined) return [];
-  return [{ id, label: f.label, tab: f.tab, size: [width, height] as const }];
+  return [
+    {
+      id,
+      label: f.label,
+      tab: f.tab,
+      size: [width, height] as const,
+      materialIds: f.materials ?? [],
+      mustBe: f.mustBe ?? {},
+      failMessage: f.failMessage ?? null,
+      placeOn: f.placeOn === 'water' ? ('water' as const) : null,
+    },
+  ];
 });
 
 const featuresById = new Map(PLACEABLE_FEATURES.map((f) => [f.id, f]));
@@ -107,6 +129,59 @@ export const FENCE_MATERIALS: readonly Material[] = (rawFeatures.fence?.material
 
 const fenceMaterialIds = new Set(FENCE_MATERIALS.map((m) => m.id));
 
+/** The materials a roof can be made of. */
+export const ROOF_MATERIALS: readonly Material[] = data.roof.materials.flatMap((id) => {
+  const material = getMaterial(id);
+  return material ? [material] : [];
+});
+
+const roofMaterialIds = new Set(ROOF_MATERIALS.map((m) => m.id));
+
+/** The materials with these ids, in the same order. Unknown ids are skipped. */
+export function getMaterials(ids: readonly string[]): Material[] {
+  return ids.flatMap((id) => {
+    const material = getMaterial(id);
+    return material ? [material] : [];
+  });
+}
+
+/** What each job needs from its material. The job is a feature id, "fence" or "roof". */
+interface JobRule {
+  materialIds: readonly string[];
+  mustBe: Readonly<Record<string, boolean>>;
+  failMessage: string | null;
+}
+
+function buildJobRules(): Map<string, JobRule> {
+  const rules = new Map<string, JobRule>();
+  for (const [id, f] of Object.entries(rawFeatures)) {
+    if (f.mustBe) rules.set(id, { materialIds: f.materials ?? [], mustBe: f.mustBe, failMessage: f.failMessage ?? null });
+  }
+  rules.set('roof', { materialIds: data.roof.materials, mustBe: data.roof.mustBe, failMessage: data.roof.failMessage });
+  return rules;
+}
+
+const jobRules = buildJobRules();
+
+/** Does this material suit this job (a feature id, "fence" or "roof")? Jobs without needs always work. */
+export function checkMaterial(job: string, materialId: string): MaterialCheck {
+  const rule = jobRules.get(job);
+  const raw = rawMaterials[materialId];
+  if (!rule || !raw) return MATERIAL_OK;
+  const missing = missingProperty(rule.mustBe, (property) => {
+    const value = raw[property];
+    return typeof value === 'boolean' ? value : null;
+  });
+  return { works: missing === null, missing };
+}
+
+/** The gentle message for when a material does not suit its job, from the data file. */
+export function failMessageFor(job: string): Message | null {
+  const text = jobRules.get(job)?.failMessage;
+  // These messages already include their own icon, so the banner needs none of its own.
+  return text ? { icon: '', text } : null;
+}
+
 /** Messages for the enclosure check: closed in, a gap, or not closed in at all. */
 export const ENCLOSURE_MESSAGES: Readonly<Record<'closed' | 'gap' | 'open', Message>> = data.enclosureMessages;
 
@@ -114,7 +189,7 @@ export const ENCLOSURE_MESSAGES: Readonly<Record<'closed' | 'gap' | 'open', Mess
 export const BUBBLES: Readonly<Record<'needWater', Message>> = data.bubbles;
 
 /** Short notices shown in the message banner, e.g. when a new animal has nowhere to go. */
-export const NOTICES: Readonly<Record<'noRoom', Message>> = data.notices;
+export const NOTICES: Readonly<Record<'noRoom' | 'needsWater' | 'roofNeedsFence', Message>> = data.notices;
 
 export interface Animal {
   id: string;
@@ -152,4 +227,8 @@ export const featureCatalogue: Catalogue = {
   animalSizeOf: (id) => animalsById.get(id)?.size,
   isWaterKind: (kind) => waterKinds.has(kind),
   livesInWater: (id) => animalsById.get(id)?.livesInWater === true,
+  placeOn: (kind) => featuresById.get(kind)?.placeOn ?? null,
+  materialsFor: (kind) => featuresById.get(kind)?.materialIds ?? [],
+  materialCheck: checkMaterial,
+  isRoofMaterial: (id) => roofMaterialIds.has(id),
 };

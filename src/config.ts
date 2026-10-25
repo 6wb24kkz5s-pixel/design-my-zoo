@@ -140,6 +140,55 @@ export const MATERIAL_STYLE: Readonly<Record<string, PaintStyle>> = {
 
 export const FALLBACK_PAINT_STYLE: PaintStyle = { colour: 0x999999, pattern: 'none', patternColour: 0x666666 };
 
+/**
+ * What an unsuitable material looks like, by the property it is missing. These are
+ * placeholder pictures until the Art milestone (M8). The properties come from the data file.
+ */
+export type ResultVisual = 'drain' | 'sink' | 'fall' | 'light' | 'still';
+
+export const RESULT_VISUAL: Readonly<Record<string, ResultVisual>> = {
+  waterproof: 'drain',
+  floats: 'sink',
+  strong: 'fall',
+  transparent: 'light',
+  flexible: 'still',
+};
+
+export const RESULT_STYLE = {
+  water: 0x3d9be9,
+  waterLine: 0xbfe3ff,
+  dry: 0xd8cfb8,
+  crack: 0x9a8f73,
+  sun: 0xffe066,
+  sunAlpha: 0.55,
+  shadow: 0x1e2a30,
+  shadowAlpha: 0.28,
+  /** Thickness of the rim around a pool, in world pixels. */
+  rim: 9,
+  /** How long the drain, sink and fall pictures take, in milliseconds. */
+  animateMs: 1100,
+  /** How far a working swing sways each way (degrees), and how long one sway takes. */
+  swayDegrees: 7,
+  swayMs: 900,
+  /** The badge showing the property an unsuitable material is missing. */
+  badgeRadius: 14,
+  badgeFill: 0xffffff,
+  badgeBorder: 0xff9f1c,
+  badgeBorderWidth: 3,
+  badgeFontSize: 16,
+  /** Dashed outline round an item whose material does not suit it. */
+  problemDash: 8,
+  problemGap: 5,
+} as const;
+
+export const ROOF_STYLE = {
+  /** How strongly a roof tints the enclosure below it. */
+  tintAlpha: 0.4,
+  hatch: 0xff9f1c,
+  hatchAlpha: 0.9,
+  hatchLineWidth: 2,
+} as const;
+
 export const ENCLOSURE = {
   /** Gaps up to this many squares wide are found and shown; wider openings just count as "not closed in". */
   maxGapWidth: 3,
@@ -170,4 +219,7 @@ export const FENCE_DRAW = {
   borderWidth: 3,
   border: 0x1e2a30,
   patternLineWidth: 2,
+  /** A fence that is not strong has a dashed outline. */
+  weakDash: 7,
+  weakGap: 5,
 } as const;

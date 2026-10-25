@@ -1,6 +1,7 @@
 import { FALLBACK_PAINT_STYLE, GROUND_STYLE, ITEM_STYLE, TAB_COLOURS, UI } from '../config';
 import { featuresInTab, getMaterial, GROUND_TYPES, type PlaceableFeature } from '../data/content';
 import type { PaintTool } from '../logic/paint';
+import type { RoofTool } from '../logic/roofs';
 import { BIN_DROP } from '../scenes/DragController';
 import { cssColour } from './colour';
 
@@ -11,6 +12,10 @@ export interface PaletteActions {
   onToolTap(tool: PaintTool): void;
   /** The Fence tool was tapped (a material is chosen next). */
   onFenceTap(): void;
+  /** The Roof tool was tapped (a material is chosen next). */
+  onRoofTap(): void;
+  /** The "No roof" tool was tapped. */
+  onNoRoofTap(): void;
 }
 
 export interface Palette {
@@ -18,6 +23,8 @@ export interface Palette {
   setBinHover(active: boolean): void;
   /** Lights up the tool card for the active paint tool (or none). */
   setActiveTool(tool: PaintTool | null): void;
+  /** Lights up the Roof or "No roof" card while roof mode is on. */
+  setActiveRoof(tool: RoofTool | null): void;
 }
 
 // Tab ids match the "tab" values in char-and-properties.json (GDD section 5).
@@ -32,16 +39,28 @@ const TABS = [
 
 const FIRST_TAB = 'ground';
 
+/** The icon of a palette tab, e.g. 🏠 for "shelter". */
+export function tabIcon(tabId: string): string {
+  return TABS.find((tab) => tab.id === tabId)?.icon ?? '';
+}
+
 /** Size of one square in the little shape preview on each card, in CSS pixels. */
 const SWATCH_SQUARE = 12;
 /** Size of the colour square on ground tool cards, in CSS pixels. */
 const TOOL_SWATCH = 30;
 
+interface ModeState {
+  paint: PaintTool | null;
+  roof: RoofTool | null;
+}
+
 interface ToolCard {
   element: HTMLButtonElement;
   name: HTMLElement;
   label: string;
-  isActive(tool: PaintTool | null): boolean;
+  isActive(state: ModeState): boolean;
+  /** The material being used, shown after the name while active (e.g. "Fence: Wood"). */
+  detail(state: ModeState): string | null;
 }
 
 /** Builds the bottom palette: tabs, item cards or paint tools, and the Bin. */
@@ -58,7 +77,7 @@ export function createPalette(root: HTMLElement, actions: PaletteActions): Palet
   const cards = document.createElement('div');
   cards.className = 'palette-cards';
 
-  let activeTool: PaintTool | null = null;
+  const state: ModeState = { paint: null, roof: null };
   let toolCards: ToolCard[] = [];
 
   const tabButtons = TABS.map((tab) => {
@@ -74,21 +93,21 @@ export function createPalette(root: HTMLElement, actions: PaletteActions): Palet
 
   function showTab(id: string): void {
     for (const tab of tabButtons) tab.button.setAttribute('aria-selected', String(tab.id === id));
-    toolCards = id === 'ground' ? groundTools(actions) : id === 'fences' ? fenceTools(actions) : [];
-    const features = featuresInTab(id);
+    toolCards =
+      id === 'ground' ? groundTools(actions) : id === 'fences' ? fenceTools(actions) : id === 'shelter' ? roofTools(actions) : [];
     cards.replaceChildren(
-      ...(toolCards.length > 0 ? toolCards.map((t) => t.element) : features.map((f) => makeItemCard(f, actions))),
+      ...featuresInTab(id).map((f) => makeItemCard(f, actions)),
+      ...toolCards.map((t) => t.element),
     );
     highlight();
   }
 
   function highlight(): void {
     for (const card of toolCards) {
-      const active = card.isActive(activeTool);
+      const active = card.isActive(state);
       card.element.setAttribute('aria-pressed', String(active));
-      // The Fence card shows the chosen material while painting, e.g. "Fence: Wood".
-      const material = active && activeTool?.layer === 'fence' && activeTool.value ? getMaterial(activeTool.value) : null;
-      card.name.textContent = material ? `${card.label}: ${material.label}` : card.label;
+      const detail = active ? card.detail(state) : null;
+      card.name.textContent = detail ? `${card.label}: ${detail}` : card.label;
     }
   }
 
@@ -110,11 +129,17 @@ export function createPalette(root: HTMLElement, actions: PaletteActions): Palet
       bin.classList.toggle('palette-bin-active', active);
     },
     setActiveTool(tool) {
-      activeTool = tool;
+      state.paint = tool;
+      highlight();
+    },
+    setActiveRoof(tool) {
+      state.roof = tool;
       highlight();
     },
   };
 }
+
+const noDetail = () => null;
 
 function groundTools(actions: PaletteActions): ToolCard[] {
   const paints = GROUND_TYPES.map((ground) => {
@@ -122,23 +147,54 @@ function groundTools(actions: PaletteActions): ToolCard[] {
     swatch.className = 'palette-tool-swatch';
     swatch.style.width = swatch.style.height = `${TOOL_SWATCH}px`;
     swatch.style.background = cssColour((GROUND_STYLE[ground.id] ?? FALLBACK_PAINT_STYLE).colour);
-    return makeToolCard(swatch, ground.label, () => actions.onToolTap({ layer: 'ground', value: ground.id }), (tool) =>
-      tool?.layer === 'ground' && tool.value === ground.id,
+    return makeToolCard(
+      swatch,
+      ground.label,
+      () => actions.onToolTap({ layer: 'ground', value: ground.id }),
+      ({ paint }) => paint?.layer === 'ground' && paint.value === ground.id,
+      noDetail,
     );
   });
   return [...paints, eraserCard('ground', actions)];
 }
 
 function fenceTools(actions: PaletteActions): ToolCard[] {
-  const fence = makeToolCard(emojiSwatch('🧱'), 'Fence', () => actions.onFenceTap(), (tool) =>
-    tool?.layer === 'fence' && tool.value !== null,
+  const fence = makeToolCard(
+    emojiSwatch('🧱'),
+    'Fence',
+    () => actions.onFenceTap(),
+    ({ paint }) => paint?.layer === 'fence' && paint.value !== null,
+    ({ paint }) => (paint?.value ? (getMaterial(paint.value)?.label ?? null) : null),
   );
   return [fence, eraserCard('fence', actions)];
 }
 
+/** The Roof and "No roof" tools sit with the items in the Shelter tab. */
+function roofTools(actions: PaletteActions): ToolCard[] {
+  const roof = makeToolCard(
+    emojiSwatch('🏠'),
+    'Roof',
+    () => actions.onRoofTap(),
+    ({ roof: tool }) => tool !== null && tool.material !== null,
+    ({ roof: tool }) => (tool?.material ? (getMaterial(tool.material)?.label ?? null) : null),
+  );
+  const noRoof = makeToolCard(
+    emojiSwatch('🧽'),
+    'No roof',
+    () => actions.onNoRoofTap(),
+    ({ roof: tool }) => tool !== null && tool.material === null,
+    noDetail,
+  );
+  return [roof, noRoof];
+}
+
 function eraserCard(layer: PaintTool['layer'], actions: PaletteActions): ToolCard {
-  return makeToolCard(emojiSwatch('🧽'), 'Eraser', () => actions.onToolTap({ layer, value: null }), (tool) =>
-    tool?.layer === layer && tool.value === null,
+  return makeToolCard(
+    emojiSwatch('🧽'),
+    'Eraser',
+    () => actions.onToolTap({ layer, value: null }),
+    ({ paint }) => paint?.layer === layer && paint.value === null,
+    noDetail,
   );
 }
 
@@ -154,7 +210,8 @@ function makeToolCard(
   swatch: HTMLElement,
   label: string,
   onTap: () => void,
-  isActive: (tool: PaintTool | null) => boolean,
+  isActive: (state: ModeState) => boolean,
+  detail: (state: ModeState) => string | null,
 ): ToolCard {
   const element = document.createElement('button');
   element.type = 'button';
@@ -167,7 +224,7 @@ function makeToolCard(
 
   element.append(swatch, name);
   element.addEventListener('click', onTap);
-  return { element, name, label, isActive };
+  return { element, name, label, isActive, detail };
 }
 
 function makeItemCard(feature: PlaceableFeature, actions: PaletteActions): HTMLElement {

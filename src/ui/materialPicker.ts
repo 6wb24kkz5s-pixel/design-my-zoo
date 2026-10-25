@@ -13,7 +13,13 @@ export interface PickerHeading {
  * does not have that property, and null properties are not shown.
  * Resolves with the chosen material id, or null if the child backs out.
  */
-export function pickMaterial(root: HTMLElement, heading: PickerHeading, materials: readonly Material[]): Promise<string | null> {
+export function pickMaterial(
+  root: HTMLElement,
+  heading: PickerHeading,
+  materials: readonly Material[],
+  /** The material it is made of now, if any. It gets a "✓ Now" label. */
+  current?: string,
+): Promise<string | null> {
   return new Promise((resolve) => {
     const backdrop = document.createElement('div');
     backdrop.className = 'dialog-backdrop';
@@ -37,7 +43,7 @@ export function pickMaterial(root: HTMLElement, heading: PickerHeading, material
     };
 
     for (const material of materials) {
-      grid.append(materialCard(material, () => close(material.id)));
+      grid.append(materialCard(material, material.id === current, () => close(material.id)));
     }
 
     const back = document.createElement('button');
@@ -56,10 +62,10 @@ export function pickMaterial(root: HTMLElement, heading: PickerHeading, material
   });
 }
 
-function materialCard(material: Material, onChoose: () => void): HTMLButtonElement {
+function materialCard(material: Material, isCurrent: boolean, onChoose: () => void): HTMLButtonElement {
   const card = document.createElement('button');
   card.type = 'button';
-  card.className = 'picker-card';
+  card.className = isCurrent ? 'picker-card picker-card-current' : 'picker-card';
   card.setAttribute('aria-label', material.label);
 
   const swatch = document.createElement('span');
@@ -87,6 +93,12 @@ function materialCard(material: Material, onChoose: () => void): HTMLButtonEleme
   }
 
   card.append(swatch, name, props);
+  if (isCurrent) {
+    const now = document.createElement('span');
+    now.className = 'picker-now';
+    now.textContent = '✓ Now';
+    card.append(now);
+  }
   card.addEventListener('click', onChoose);
   return card;
 }

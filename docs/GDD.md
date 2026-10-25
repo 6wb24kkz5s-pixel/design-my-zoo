@@ -92,9 +92,13 @@ There are no levels and no win screen. Progress is visible as more animals becom
 
 **Fences (paint):** choose a material first. A fence fills one square.
 
-**Roof:** tap inside an enclosure, then "Add roof", then pick a material. It shows as a light tint over the enclosure.
+**Roof:** in the Shelter tab, tap **Roof**, pick a material, then tap inside a fenced-in area. The whole enclosure gets a roof, shown as a light tint. An area with a gap can't be roofed. **No roof** takes a roof off the area you tap. Both work like paint mode, with a "✋ Done" sign.
 
-**Material picker:** whenever a feature needs a material, big cards pop up. Each shows a picture, the name, and property icons: 💪 strong · 🌀 flexible · 💧 waterproof · 🔍 transparent · 🛟 floats. A crossed-out icon means the material does *not* have that property. Properties set to `null` in the data file are not shown. Tapping a card selects it.
+**Changing a material:** tap a placed feature that has a material choice and the picker opens again, with its current material marked.
+
+**Water-only items:** water plants, floating islands, shrimp and fish food only go on pool and pond squares, and travel with a pool when it is moved or binned.
+
+**Material picker:** whenever a feature needs a material, big cards pop up (when a new feature is dropped where it fits). Each shows a picture, the name, and property icons: 💪 strong · 🌀 flexible · 💧 waterproof · 🔍 transparent · 🛟 floats. A crossed-out icon means the material does *not* have that property. Properties set to `null` in the data file are not shown. Tapping a card selects it.
 
 **Materials and where they are offered:**
 

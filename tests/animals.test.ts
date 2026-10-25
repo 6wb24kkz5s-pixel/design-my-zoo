@@ -137,6 +137,23 @@ describe('the fish-in-water rule', () => {
     expect(needsWater(moved, fakeCatalogue, moved.animals[0]!)).toBe(true);
   });
 
+  it('does not count a leaking pool as water', () => {
+    const leaking = withItem(EMPTY_ZOO, fakeCatalogue, 'pool', 5, 5);
+    const leakingWood = placeItem(EMPTY_ZOO, fakeCatalogue, 'pool', 5, 5, 'wood') as Zoo;
+    const fishInLeaking = placed(leakingWood, fakeCatalogue, 'fish', 6, 6);
+    expect(needsWater(fishInLeaking, fakeCatalogue, fishInLeaking.animals[0]!)).toBe(true);
+
+    const fishInGood = placed(leaking, fakeCatalogue, 'fish', 6, 6);
+    expect(needsWater(fishInGood, fakeCatalogue, fishInGood.animals[0]!)).toBe(false);
+  });
+
+  it('counts a fish on a water plant floating on a good pool as in water', () => {
+    const pool = withItem(EMPTY_ZOO, fakeCatalogue, 'pool', 5, 5);
+    const withPlant = withItem(pool, fakeCatalogue, 'plant', 6, 6);
+    const zoo = placed(withPlant, fakeCatalogue, 'fish', 6, 6);
+    expect(needsWater(zoo, fakeCatalogue, zoo.animals[0]!)).toBe(false);
+  });
+
   it('never applies to animals that do not live in water', () => {
     const zoo = placed(EMPTY_ZOO, fakeCatalogue, 'bird', 5, 5);
     expect(needsWater(zoo, fakeCatalogue, zoo.animals[0]!)).toBe(false);
@@ -189,6 +206,17 @@ describe('the 12 animals from the data file', () => {
       const bowl = withItem(EMPTY_ZOO, featureCatalogue, 'water_bowl', 5, 5);
       const inBowl = placed(bowl, featureCatalogue, fish, 5, 5);
       expect(needsWater(inBowl, featureCatalogue, inBowl.animals[0]!)).toBe(true);
+    }
+  });
+
+  it('makes a koi in a fabric pool still need water, because the pool leaks', () => {
+    for (const kind of ['deep_pool', 'shallow_pond']) {
+      const fabric = placeItem(EMPTY_ZOO, featureCatalogue, kind, 5, 5, 'fabric') as Zoo;
+      const koi = placed(fabric, featureCatalogue, 'koi', 6, 5);
+      expect(needsWater(koi, featureCatalogue, koi.animals[0]!), kind).toBe(true);
+      const glass = placeItem(EMPTY_ZOO, featureCatalogue, kind, 5, 5, 'glass') as Zoo;
+      const dry = placed(glass, featureCatalogue, 'koi', 6, 5);
+      expect(needsWater(dry, featureCatalogue, dry.animals[0]!), kind).toBe(false);
     }
   });
 

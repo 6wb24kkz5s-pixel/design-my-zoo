@@ -66,6 +66,45 @@ describe('saving and loading', () => {
     expect(loaded.animals).toEqual([]);
   });
 
+  it('saves and loads item materials and roofs', () => {
+    const pool = placeItem(EMPTY_ZOO, catalogue, 'pool', 5, 5, 'wood') as Zoo;
+    const hut = placeItem(pool, catalogue, 'hut', 12, 12, 'net') as Zoo;
+    const zoo: Zoo = { ...hut, roofs: { '12,12': 'net', '13,12': 'glass' } };
+    const loaded = deserializeZoo(serializeZoo(zoo), catalogue);
+    expect(loaded.items.map((i) => i.material)).toEqual(['wood', 'net']);
+    expect(loaded.roofs).toEqual({ '12,12': 'net', '13,12': 'glass' });
+  });
+
+  it('gives items from an older save (no material) a working one', () => {
+    const m5Save = JSON.stringify({
+      version: 3,
+      items: [{ kind: 'pool', col: 5, row: 5 }, { kind: 'hut', col: 12, row: 12 }, { kind: 'small', col: 3, row: 3 }],
+    });
+    const loaded = deserializeZoo(m5Save, catalogue);
+    expect(loaded.items.map((i) => i.material)).toEqual(['glass', 'wood', undefined]);
+    expect(loaded.roofs).toEqual({});
+  });
+
+  it('loads pools before the water-only items on them, whatever order they were saved in', () => {
+    const save = JSON.stringify({
+      version: 4,
+      items: [{ kind: 'plant', col: 6, row: 6 }, { kind: 'pool', col: 5, row: 5, material: 'glass' }],
+    });
+    const loaded = deserializeZoo(save, catalogue);
+    expect(loaded.items.map((i) => i.kind).sort()).toEqual(['plant', 'pool']);
+  });
+
+  it('skips bad roofs and replaces a material the item is not offered in', () => {
+    const save = JSON.stringify({
+      version: 4,
+      items: [{ kind: 'pool', col: 5, row: 5, material: 'cheese' }],
+      roofs: { '6,6': 'net', '7,7': 'wood', '0,0': 'net', nonsense: 'net', '8,8': 4 },
+    });
+    const loaded = deserializeZoo(save, catalogue);
+    expect(loaded.items[0]?.material).toBe('glass');
+    expect(loaded.roofs).toEqual({ '6,6': 'net' });
+  });
+
   it('skips animals that are unknown, repeated, on a fence or off the grid', () => {
     const save = JSON.stringify({
       version: 3,
