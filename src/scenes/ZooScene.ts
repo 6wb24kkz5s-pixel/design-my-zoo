@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { spriteName } from '../art/names';
 import { registerArt } from '../art/phaser';
 import { PLOT_HEIGHT, PLOT_WIDTH } from '../camera';
+import { loadSoundSetting, saveSoundSetting, soundForChange, SoundPlayer } from '../audio/sounds';
 import { CAMERA, COLOURS, GRID, GRID_LINE_ALPHA, UNDO_LIMIT } from '../config';
 import {
   checkMaterial,
@@ -26,7 +27,6 @@ import type { PaintTool } from '../logic/paint';
 import { removeRoofArea, roofArea, type RoofTool } from '../logic/roofs';
 import { browserStorage, loadZoo, saveZoo } from '../logic/save';
 import {
-  animalAt,
   EMPTY_ZOO,
   isEmptyZoo,
   itemsAt,
@@ -89,6 +89,8 @@ export class ZooScene extends Phaser.Scene {
   /** The animal the child tapped to check its enclosure. Re-checked after every change, wherever it moves. */
   private checkedAnimalId: string | null = null;
   private readonly storage = browserStorage();
+  private readonly sounds = new SoundPlayer();
+  private soundOn = false;
 
   constructor() {
     super('ZooScene');
@@ -102,7 +104,7 @@ export class ZooScene extends Phaser.Scene {
     this.lines = this.add.graphics().setDepth(DEPTH.gridLines).setAlpha(GRID_LINE_ALPHA);
     this.itemLayer = new ItemLayer(this);
     this.roofLayer = new RoofLayer(this);
-    this.animalLayer = new AnimalLayer(this);
+    this.animalLayer = new AnimalLayer(this, () => this.sounds.play('chime'));
     this.enclosureLayer = new EnclosureLayer(this);
     this.history = createHistory(loadZoo(this.storage, featureCatalogue));
 
@@ -119,7 +121,13 @@ export class ZooScene extends Phaser.Scene {
       undo: () => this.undo(),
       newZoo: () => void this.askNewZoo(),
       addAnimal: (animalId) => this.addAnimal(animalId),
+      toggleSound: () => this.setSound(!this.soundOn),
     });
+    // Sound starts off. If it was turned on before, it is on again, and the first touch unlocks it.
+    this.soundOn = loadSoundSetting(this.storage);
+    this.sounds.setEnabled(this.soundOn);
+    this.controls.setSoundOn(this.soundOn);
+    if (this.soundOn) window.addEventListener('pointerdown', () => this.sounds.unlock(), { once: true });
     this.palette = createPalette(ui, {
       onCardPointerDown: (kind, event) => this.dragController.startFromPalette(kind, event),
       onToolTap: (tool) => this.toggleTool(tool),
@@ -141,6 +149,11 @@ export class ZooScene extends Phaser.Scene {
       isPainting: () => this.paintTool !== null || this.roofTool !== null,
       dropNew: (kind, col, row) => void this.dropNew(kind, col, row),
       showNotice: (message) => this.showNotice(message),
+      animalAtPoint: (x, y) => {
+        const id = this.animalLayer.idAtPoint(x, y);
+        return id ? this.history.present.animals.find((a) => a.animalId === id) : undefined;
+      },
+      animalPosition: (animalId) => this.animalLayer.positionOf(animalId),
     });
     this.paintController = new PaintController(this, {
       tool: () => this.paintTool,
@@ -155,7 +168,7 @@ export class ZooScene extends Phaser.Scene {
         if (this.paintTool?.layer === 'fence' && this.paintTool.value) this.reportMaterial('fence', this.paintTool.value);
       },
     });
-    new TapController(this, () => this.paintTool === null, (square) => this.onTap(square));
+    new TapController(this, () => this.paintTool === null, (square, world) => this.onTap(square, world));
     this.refresh();
     this.syncLayerZoom();
 
@@ -165,8 +178,9 @@ export class ZooScene extends Phaser.Scene {
     });
   }
 
-  update(): void {
+  update(_time: number, delta: number): void {
     this.cameraController.update();
+    this.animalLayer.update(this.history.present, delta);
 
     const zoom = this.cameras.main.zoom;
     if (zoom !== this.linesZoom) {
@@ -265,8 +279,19 @@ export class ZooScene extends Phaser.Scene {
 
   /** Every change goes through here: remember it for Undo, autosave, redraw. */
   private commit(next: Zoo): void {
+    const before = this.history.present;
     this.history = commit(this.history, next, UNDO_LIMIT);
     this.afterChange();
+    this.sounds.play(soundForChange(before, next, featureCatalogue));
+  }
+
+  private setSound(on: boolean): void {
+    this.soundOn = on;
+    this.sounds.setEnabled(on);
+    this.sounds.unlock(); // this tap is the touch the iPad needs before it allows sound
+    saveSoundSetting(this.storage, on);
+    this.controls.setSoundOn(on);
+    this.sounds.play('pop'); // a little sound to show it works
   }
 
   private undo(): void {
@@ -361,14 +386,16 @@ export class ZooScene extends Phaser.Scene {
    * tap an animal to check its enclosure (tap it again to stop), tap an item that has a
    * material to change it, and tap anywhere else to clear the check.
    */
-  private onTap(square: Square): void {
+  private onTap(square: Square, world: { x: number; y: number }): void {
     const zoo = this.draft ?? this.history.present;
     if (this.roofTool) {
       this.applyRoof(square);
       return;
     }
 
-    const animal = animalAt(zoo, featureCatalogue, square.col, square.row);
+    // Animals wander, so the one tapped is the one drawn under the finger.
+    const animalId = this.animalLayer.idAtPoint(world.x, world.y);
+    const animal = animalId ? zoo.animals.find((a) => a.animalId === animalId) : undefined;
     this.checkedAnimalId = animal && animal.animalId !== this.checkedAnimalId ? animal.animalId : null;
     this.showCheck(zoo);
     if (animal) return;

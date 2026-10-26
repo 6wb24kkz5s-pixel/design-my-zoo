@@ -6,9 +6,13 @@ import type { Drawing } from './ground';
 
 const done = (px: Pixels): Drawing => ({ pixels: px.outline('k'), palette: {} });
 
-function koi(): Drawing {
+/** Pose 0 is the normal picture. Pose 1 is the other half of a swim or a flap: a tail swished or wings raised. */
+type Pose = 0 | 1;
+
+function koi(pose: Pose = 0): Drawing {
   const px = new Pixels(16, 16);
-  px.triangle(0.5, 4.5, 0.5, 11.5, 5.5, 8, 'a');
+  if (pose === 0) px.triangle(0.5, 4.5, 0.5, 11.5, 5.5, 8, 'a');
+  else px.triangle(0.5, 2.5, 0.5, 9.5, 5.5, 7.5, 'a');
   px.ellipse(8.5, 8, 5.6, 3.7, 'w');
   px.ellipse(7, 6.9, 2.7, 1.7, 'a').ellipse(11, 9.2, 2, 1.4, 'a');
   px.triangle(6.5, 5, 10.5, 5, 8.5, 2.2, 'b').triangle(8, 10.5, 10.5, 10.5, 8.8, 13.5, 'b');
@@ -16,9 +20,13 @@ function koi(): Drawing {
   return done(px);
 }
 
-function goldfish(): Drawing {
+function goldfish(pose: Pose = 0): Drawing {
   const px = new Pixels(16, 16);
-  px.triangle(0.5, 3, 5, 8, 0.5, 8, 'b').triangle(0.5, 13, 5, 8, 0.5, 8, 'b').ellipse(3, 8, 1.6, 2, 'a');
+  if (pose === 0) {
+    px.triangle(0.5, 3, 5, 8, 0.5, 8, 'b').triangle(0.5, 13, 5, 8, 0.5, 8, 'b').ellipse(3, 8, 1.6, 2, 'a');
+  } else {
+    px.triangle(0.5, 5, 5, 8, 0.5, 9, 'b').triangle(0.5, 11, 5, 8, 0.5, 7, 'b').ellipse(3, 8, 1.6, 1.4, 'a');
+  }
   px.ellipse(9, 8, 5, 4.2, 'a').ellipse(9, 10, 3.6, 1.8, 'y');
   px.triangle(7, 4.5, 11, 4.5, 9, 1.8, 'b');
   px.ellipse(11.5, 6.8, 1.5, 1.5, 'w').set(12, 7, 'k').set(14, 9, 'b');
@@ -71,22 +79,24 @@ function snake(): Drawing {
   return done(px);
 }
 
-function parrot(): Drawing {
+function parrot(pose: Pose = 0): Drawing {
   const px = new Pixels(16, 16);
   px.rect(2, 11, 3, 4, 'u').rect(2, 14, 3, 1, 'y').rect(4, 12, 1, 3, 'u');
   px.ellipse(7.5, 9, 4.6, 5.2, 'r');
   px.ellipse(10.8, 4.8, 3.2, 3.2, 'r');
-  px.ellipse(5.8, 9.2, 2.8, 4, 'u').rect(4, 11, 3, 2, 'y');
+  if (pose === 0) px.ellipse(5.8, 9.2, 2.8, 4, 'u').rect(4, 11, 3, 2, 'y');
+  else px.ellipse(4.2, 5.4, 2.4, 4.2, 'u').rect(2, 2, 3, 2, 'y').ellipse(5.6, 9.2, 1.6, 2.2, 'u');
   px.triangle(13, 3.5, 15.5, 5.5, 13, 7.5, 'y').set(15, 6, 'Y');
   px.ellipse(11, 4.2, 1.2, 1.2, 'w').set(11, 4, 'k');
   px.rect(6, 14, 1, 1, 'Y').rect(9, 14, 1, 1, 'Y');
   return done(px);
 }
 
-function flamingo(): Drawing {
+function flamingo(pose: Pose = 0): Drawing {
   const px = new Pixels(16, 16);
   px.line(6, 10, 6, 15, 'P').line(9, 10, 10, 13, 'P').line(10, 13, 8, 15, 'P');
   px.ellipse(7, 7.5, 5, 3.4, 'p').ellipse(5, 8, 3, 2, 'P');
+  if (pose === 1) px.triangle(2, 6.5, 9, 6.5, 4, 1.2, 'p').triangle(3, 6.5, 6, 6.5, 4, 3, 'P');
   px.rect(11, 2, 2, 6, 'p').line(11, 2, 13, 1, 'p');
   px.ellipse(13, 2, 2, 1.6, 'p');
   px.triangle(13.5, 1.5, 15.8, 3, 13.5, 3.6, 'k').set(13, 1, 'w');
@@ -94,8 +104,9 @@ function flamingo(): Drawing {
   return done(px);
 }
 
-function beetle(): Drawing {
+function beetle(pose: Pose = 0): Drawing {
   const px = new Pixels(16, 16);
+  if (pose === 1) px.ellipse(2.6, 8, 2.6, 4.4, 'v').ellipse(13.4, 8, 2.6, 4.4, 'v');
   for (const y of [5, 8, 11]) px.line(2, y - 1, 5, y, 'k').line(14, y - 1, 11, y, 'k');
   px.ellipse(8, 9.2, 4.6, 5.6, 'C');
   px.ellipse(8, 3.2, 2.6, 2, 'k').line(6, 1, 4, 0, 'k').line(10, 1, 12, 0, 'k');
@@ -104,11 +115,17 @@ function beetle(): Drawing {
   return done(px);
 }
 
-function dragonfly(): Drawing {
+function dragonfly(pose: Pose = 0): Drawing {
   const px = new Pixels(16, 16);
-  px.ellipse(3.6, 5.8, 3.6, 1.7, 'v').ellipse(12.4, 5.8, 3.6, 1.7, 'v');
-  px.ellipse(4.2, 9.2, 3.4, 1.6, 'v').ellipse(11.8, 9.2, 3.4, 1.6, 'v');
-  px.line(2, 5, 5, 5, 'w').line(11, 5, 14, 5, 'w');
+  if (pose === 0) {
+    px.ellipse(3.6, 5.8, 3.6, 1.7, 'v').ellipse(12.4, 5.8, 3.6, 1.7, 'v');
+    px.ellipse(4.2, 9.2, 3.4, 1.6, 'v').ellipse(11.8, 9.2, 3.4, 1.6, 'v');
+    px.line(2, 5, 5, 5, 'w').line(11, 5, 14, 5, 'w');
+  } else {
+    px.ellipse(3.8, 8, 3.6, 1.7, 'v').ellipse(12.2, 8, 3.6, 1.7, 'v');
+    px.ellipse(4.4, 11.4, 3.2, 1.5, 'v').ellipse(11.6, 11.4, 3.2, 1.5, 'v');
+    px.line(2, 7, 5, 7, 'w').line(11, 7, 14, 7, 'w');
+  }
   px.rect(7, 3, 2, 12, 'C');
   for (const y of [6, 9, 12]) px.rect(7, y, 2, 1, 'c');
   px.ellipse(8, 3, 2.4, 2.2, 'C').set(6, 2, 'r').set(9, 2, 'r');
@@ -143,6 +160,16 @@ function crocodile(): Drawing {
   px.ellipse(22.5, 5.4, 1.3, 1.3, 'y').set(22, 5, 'k').set(30, 6, 'k');
   return done(px);
 }
+
+/** The animals that have a second picture, for swimming or flapping, with how to draw it. */
+export const ANIMAL_POSES: Readonly<Record<string, () => Drawing>> = {
+  koi: () => koi(1),
+  goldfish: () => goldfish(1),
+  parrot: () => parrot(1),
+  flamingo: () => flamingo(1),
+  beetle: () => beetle(1),
+  dragonfly: () => dragonfly(1),
+};
 
 /** The picture of each animal, by its id in the data file. */
 export const ANIMAL_DRAWINGS: Readonly<Record<string, () => Drawing>> = {

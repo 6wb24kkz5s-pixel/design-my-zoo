@@ -193,7 +193,7 @@ export function failMessageFor(job: string): Message | null {
 export const ENCLOSURE_MESSAGES: Readonly<Record<'closed' | 'gap' | 'open', Message>> = data.enclosureMessages;
 
 /** Speech-bubble messages that animals say. */
-export const BUBBLES: Readonly<Record<'needWater', Message>> = data.bubbles;
+export const BUBBLES: Readonly<Record<'needWater' | 'escape', Message>> = data.bubbles;
 
 /** Short notices shown in the message banner, e.g. when a new animal has nowhere to go. */
 export const NOTICES: Readonly<Record<'noRoom' | 'needsWater' | 'roofNeedsFence', Message>> = data.notices;

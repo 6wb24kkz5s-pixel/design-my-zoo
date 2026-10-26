@@ -8,6 +8,7 @@ export interface ControlActions {
   undo(): void;
   newZoo(): void;
   addAnimal(animalId: string): void;
+  toggleSound(): void;
 }
 
 export interface Controls {
@@ -17,6 +18,8 @@ export interface Controls {
   setCanUndo(canUndo: boolean): void;
   /** Ticks the animals that are already in the zoo, in the 🐾 Animals drop-down. */
   setAnimalsInZoo(animalIds: readonly string[]): void;
+  /** Shows whether sound is on (🔊) or off (🔇). */
+  setSoundOn(on: boolean): void;
 }
 
 /** Builds the HTML top bar (Animals, Undo, See whole zoo, Menu) and the + / – zoom buttons inside #ui. */
@@ -28,6 +31,8 @@ export function createControls(root: HTMLElement, actions: ControlActions): Cont
   const animals = createAnimalMenu(actions.addAnimal);
   const undo = makeButton('ui-button', '↩️', 'Undo', actions.undo, true);
   const wholeZoo = makeButton('ui-button', '🗺️', 'See whole zoo', actions.seeWholeZoo, true);
+  const sound = makeButton('ui-button sound-button', '🔇', 'Sound', actions.toggleSound, true);
+  sound.setAttribute('aria-pressed', 'false');
   const menu = createMenu(actions);
 
   const spacer = document.createElement('div');
@@ -35,7 +40,7 @@ export function createControls(root: HTMLElement, actions: ControlActions): Cont
 
   const topBar = document.createElement('div');
   topBar.className = 'top-bar';
-  topBar.append(animals.element, undo, wholeZoo, spacer, menu);
+  topBar.append(animals.element, undo, wholeZoo, sound, spacer, menu);
 
   const zoomIn = makeButton('ui-button zoom-button', '+', 'Zoom in', actions.zoomIn);
   const zoomOut = makeButton('ui-button zoom-button', '−', 'Zoom out', actions.zoomOut);
@@ -55,6 +60,12 @@ export function createControls(root: HTMLElement, actions: ControlActions): Cont
     },
     setAnimalsInZoo(animalIds) {
       animals.setPlaced(animalIds);
+    },
+    setSoundOn(on) {
+      sound.setAttribute('aria-pressed', String(on));
+      sound.classList.toggle('sound-button-on', on);
+      const icon = sound.querySelector('.ui-button-icon');
+      if (icon) icon.textContent = on ? '🔊' : '🔇';
     },
   };
 }

@@ -13,7 +13,7 @@ import {
 import { GROUND_VARIANTS, spriteName } from './names';
 import type { Palette } from './palette';
 import type { Pixels } from './pixels';
-import { ANIMAL_DRAWINGS } from './sprites/animals';
+import { ANIMAL_DRAWINGS, ANIMAL_POSES } from './sprites/animals';
 import * as F from './sprites/features';
 import { groundTile, pathTile, plotTile, type Drawing } from './sprites/ground';
 import { fenceTile, materialSwatch, roofHatch, roofTile } from './sprites/materials';
@@ -53,7 +53,10 @@ export function requiredSpriteNames(): string[] {
   for (const m of ALL_MATERIALS) names.push(spriteName.material(m.id));
   for (const m of FENCE_MATERIALS) names.push(spriteName.fence(m.id), spriteName.fence(m.id, true));
   for (const m of ROOF_MATERIALS) names.push(spriteName.roof(m.id));
-  for (const a of ANIMALS) names.push(spriteName.animal(a.id));
+  for (const a of ANIMALS) {
+    names.push(spriteName.animal(a.id));
+    if (ANIMAL_POSES[a.id]) names.push(spriteName.animalPose(a.id));
+  }
   for (const f of PLACEABLE_FEATURES) {
     if (f.materialIds.length === 0) {
       names.push(spriteName.item(f.id));
@@ -101,6 +104,8 @@ export function buildSprites(): SpriteDef[] {
   for (const a of ANIMALS) {
     const draw = ANIMAL_DRAWINGS[a.id];
     if (draw) add(spriteName.animal(a.id), draw());
+    const pose = ANIMAL_POSES[a.id];
+    if (pose) add(spriteName.animalPose(a.id), pose());
   }
 
   for (const f of PLACEABLE_FEATURES) {

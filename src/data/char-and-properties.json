@@ -65,7 +65,8 @@
   },
 
   "bubbles": {
-    "needWater": { "icon": "💧", "text": "I need water!" }
+    "needWater": { "icon": "💧", "text": "I need water!" },
+    "escape":    { "icon": "🚧", "text": "I can get out here!" }
   },
 
   "heartMessages": {

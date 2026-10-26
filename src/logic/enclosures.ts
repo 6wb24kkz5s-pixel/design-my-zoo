@@ -83,6 +83,19 @@ export function areaInfo(fences: SquareMap, square: Square): { squares: Square[]
   return { squares: region.squares, closed: !region.open };
 }
 
+/**
+ * For an area that is nearly closed in: the squares on the animal's own side of the gaps, and the gap
+ * squares themselves. An animal that wanders only on its own side never gets out. Null if the area is
+ * closed, or open with no small gap to close.
+ */
+export function gapView(fences: SquareMap, square: Square): { inner: Square[]; gaps: Square[] } | null {
+  const check = checkArea(fences, square);
+  if (check.kind !== 'gap') return null;
+  const gapKeys = new Set(check.gaps.map((s) => squareKey(s.col, s.row)));
+  const isWall: IsWall = (c, r) => fences[squareKey(c, r)] !== undefined || gapKeys.has(squareKey(c, r));
+  return { inner: flood(square, isWall).squares, gaps: check.gaps };
+}
+
 /** Every area that is fully surrounded by fences. */
 export function findEnclosures(fences: SquareMap): Square[][] {
   const isFence: IsWall = (c, r) => fences[squareKey(c, r)] !== undefined;

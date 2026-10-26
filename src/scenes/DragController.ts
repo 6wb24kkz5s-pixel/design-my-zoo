@@ -2,7 +2,6 @@ import Phaser from 'phaser';
 import { GRID } from '../config';
 import { featureCatalogue, getAnimal, getFeature, NOTICES, type Message } from '../data/content';
 import {
-  animalAt,
   canMoveItem,
   canPlace,
   canPlaceAnimal,
@@ -40,6 +39,10 @@ export interface DragHost {
   /** A new item from the palette was dropped where it fits. The host asks for a material if it needs one. */
   dropNew(kind: string, col: number, row: number): void;
   showNotice(message: Message): void;
+  /** The animal drawn at this point of the plot. Animals wander, so this may not be where they were put. */
+  animalAtPoint(x: number, y: number): PlacedAnimal | undefined;
+  /** The top-left corner of where an animal is drawn right now, in world pixels. */
+  animalPosition(animalId: string): { x: number; y: number } | null;
 }
 
 type DragSource =
@@ -109,13 +112,15 @@ export class DragController {
     const row = Math.floor(world.y / square);
     const zoo = this.host.zoo();
 
-    // Animals stand on top of items, so they are picked up first.
-    const animal = animalAt(zoo, featureCatalogue, col, row);
+    // Animals stand on top of items, so they are picked up first. They are found where they are drawn,
+    // which may be a square or two from where they were put, because they wander.
+    const animal = this.host.animalAtPoint(world.x, world.y);
     const animalInfo = animal && getAnimal(animal.animalId);
     if (animal && animalInfo) {
+      const drawnAt = this.host.animalPosition(animal.animalId) ?? { x: animal.col * square, y: animal.row * square };
       this.begin(event, { type: 'animal', animal }, animalInfo.label, animalInfo.size, {
-        x: world.x - animal.col * square,
-        y: world.y - animal.row * square,
+        x: world.x - drawnAt.x,
+        y: world.y - drawnAt.y,
       });
       return;
     }

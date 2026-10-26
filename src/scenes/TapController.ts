@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { TAP } from '../config';
 import type { Square } from '../logic/zoo';
-import { pointerToSquare } from './pointer';
+import { pointerToSquare, pointerToWorld } from './pointer';
 
 interface Press {
   pointerId: number;
@@ -21,7 +21,7 @@ export class TapController {
     private readonly scene: Phaser.Scene,
     /** Taps are ignored while this returns false (e.g. in paint mode). */
     private readonly enabled: () => boolean,
-    private readonly onTap: (square: Square) => void,
+    private readonly onTap: (square: Square, world: { x: number; y: number }) => void,
   ) {
     window.addEventListener('pointerdown', this.onAnyPointerDown, { capture: true });
     window.addEventListener('pointermove', this.onPointerMove);
@@ -50,7 +50,8 @@ export class TapController {
     if (press?.pointerId !== event.pointerId) return;
     this.press = null;
     if (event.timeStamp - press.time <= TAP.maxMs && this.enabled()) {
-      this.onTap(pointerToSquare(this.scene, event));
+      const world = pointerToWorld(this.scene, event);
+      this.onTap(pointerToSquare(this.scene, event), { x: world.x, y: world.y });
     }
   };
 

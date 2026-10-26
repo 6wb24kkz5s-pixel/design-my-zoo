@@ -4,6 +4,7 @@ import { iconScale, ICON, usesIcon } from '../src/art/lod';
 import { GROUND_VARIANTS, spriteName } from '../src/art/names';
 import { colourOf, materialLook, mixHex } from '../src/art/palette';
 import { Pixels, seededRandom } from '../src/art/pixels';
+import { ANIMAL_POSES } from '../src/art/sprites/animals';
 import { ANIMALS, PLACEABLE_FEATURES } from '../src/data/content';
 import { ITEM_PICTURE } from '../src/config';
 
@@ -23,7 +24,11 @@ describe('every picture the game needs has been drawn', () => {
 
   it('has a picture for all 12 animals and all 38 placed things', () => {
     expect(ANIMALS).toHaveLength(12);
-    expect(sprites.filter((s) => s.name.startsWith('animal:'))).toHaveLength(12);
+    // Each animal has one picture, and the six that flap, swish or sway have a second pose ("animal:id:b").
+    const animalPictures = sprites.filter((s) => s.name.startsWith('animal:'));
+    expect(animalPictures.filter((s) => !s.name.endsWith(':b'))).toHaveLength(12);
+    expect(animalPictures.filter((s) => s.name.endsWith(':b'))).toHaveLength(Object.keys(ANIMAL_POSES).length);
+    for (const id of Object.keys(ANIMAL_POSES)) expect(byName.has(spriteName.animalPose(id)), id).toBe(true);
     expect(sprites.filter((s) => s.name.startsWith('item:'))).toHaveLength(
       PLACEABLE_FEATURES.reduce((sum, f) => sum + Math.max(f.materialIds.length, 1), 0),
     );

@@ -111,6 +111,16 @@ body {
   line-height: 1;
 }
 
+/* Sound is off until it is turned on: a dashed edge when off, a solid gold edge when on. */
+.sound-button {
+  border-style: dashed;
+}
+
+.sound-button-on {
+  border-style: solid;
+  border-color: #ffd23f;
+}
+
 .top-bar-spacer {
   flex: 1;
 }

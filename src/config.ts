@@ -38,6 +38,27 @@ export const UI = {
   panelWidth: 330,
 } as const;
 
+/** How the animals move about (M8b). Times are in milliseconds. */
+export const BEHAVIOUR = {
+  /** An animal strolls to a spot at most this many squares from where you put it. */
+  maxStrollSquares: 2,
+  /** How long a step of one square takes. Bigger animals and fish are a little slower. */
+  stepMs: 430,
+  bigStepMs: 600,
+  fishStepMs: 620,
+  /** How long an animal rests between strolls. */
+  restMinMs: 1500,
+  restMaxMs: 4500,
+  /** How long an animal looks out of a gap, and how often it goes to peek. */
+  peekHoldMs: 1700,
+  peekEveryMinMs: 7000,
+  peekEveryMaxMs: 14000,
+  /** How fast wings flap, and how far an animal tilts as it walks or swims (degrees). */
+  flapMs: 130,
+  waddleDegrees: 5,
+  swayDegrees: 7,
+} as const;
+
 /** The little faces that float above an animal when its hearts change, and the badge on a happy animal. */
 export const EMOTE = {
   gain: '😊',

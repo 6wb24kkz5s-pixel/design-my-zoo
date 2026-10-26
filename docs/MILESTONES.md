@@ -53,7 +53,11 @@ Split into two iPad checks, because art is a matter of taste and should be seen 
 - **Done when:** it looks finished, and still runs smoothly with a full zoo.
 
 ### M8b — Life, sound and wording
-- Wander / swim / flap animations, the escape peek, an optional sound toggle (off by default, sounds made by the iPad itself), and a pass on all text wording (a before-and-after list for approval).
+- Animals stroll up to two squares from where they were put (their saved square never changes), fish swim about inside their pool, birds and insects flap. Big animals and fish move slowly. Reduce Motion in the iPad settings turns all of it off.
+- Escape peek: a small animal in a pen with a small gap hops into the gap, shows "I can get out here!", and hops back. It never really leaves.
+- Animals are picked up and tapped where they are drawn.
+- 🔇/🔊 button in the top bar. Four short sounds (pop, splash, bloop, chime) made by the iPad itself. Off by default; the choice is remembered. The chime plays when an animal becomes happy.
+- `docs/wording-review.md`: a before-and-after list of message wording. **Nothing is applied until approved.**
 - **Done when:** the animals feel alive, and it still runs smoothly with a full zoo.
 
 ## M9 — Classroom trial

@@ -9,6 +9,8 @@ export const spriteName = {
   roof: (material: string) => `roof:${material}`,
   roofHatch: 'roof:hatch',
   animal: (id: string) => `animal:${id}`,
+  /** The second picture of an animal that swims or flaps (its tail swished or its wings raised). */
+  animalPose: (id: string) => `animal:${id}:b`,
   /** A placed feature or food. Features with a material choice have one picture per material. */
   item: (id: string, material?: string) => (material ? `item:${id}:${material}` : `item:${id}`),
   /** The water that fills a pool, pond or bowl, and the cracks in it once it has drained. */
