@@ -179,14 +179,11 @@ body {
   transform: scale(0.97);
 }
 
-.animal-swatch {
-  display: grid;
-  gap: 2px;
-}
-
-.animal-swatch span {
-  border: 2px solid #1e2a30;
-  border-radius: 4px;
+.animal-sprite {
+  max-width: 64px;
+  max-height: 56px;
+  width: auto;
+  height: auto;
 }
 
 .animal-card-tick {
@@ -299,9 +296,19 @@ body {
   text-align: center;
 }
 
-.palette-swatch {
-  display: grid;
-  gap: 2px;
+.palette-sprite {
+  max-width: 64px;
+  max-height: 54px;
+  width: auto;
+  height: auto;
+}
+
+/* A square of ground: shown at one grid square's size, with a thin edge so it reads as a tile. */
+.palette-ground {
+  width: 48px;
+  height: 48px;
+  border: 2px solid rgba(30, 42, 48, 0.45);
+  border-radius: 6px;
 }
 
 /* Paint tools (ground types, Fence, Eraser) are tapped, not dragged. */
@@ -332,12 +339,6 @@ body {
   color: #1e2a30;
   font-size: 16px;
   line-height: 26px;
-}
-
-.palette-tool-swatch {
-  display: block;
-  border: 2px solid rgba(30, 42, 48, 0.4);
-  border-radius: 6px;
 }
 
 .palette-tool-emoji {
@@ -415,13 +416,19 @@ html.panel-open .zoom-buttons {
   gap: 10px;
 }
 
+/* Pictures from the game's art. They stay crisp (never blurred) and cannot be picked up and dragged. */
+.sprite {
+  display: block;
+  image-rendering: pixelated;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
 .side-panel-picture {
   flex: 0 0 auto;
-  width: 40px;
-  height: 40px;
-  border: 3px solid #1e2a30;
-  border-radius: 10px;
-  background: #fff1c9;
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
 }
 
 .side-panel-name {
@@ -551,10 +558,9 @@ html.panel-open .zoom-buttons {
 }
 
 .check-option-swatch {
-  width: 18px;
-  height: 18px;
-  border: 2px solid #1e2a30;
-  border-radius: 4px;
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
 }
 
 .check-row-or {
@@ -659,8 +665,7 @@ html.panel-open .zoom-buttons {
 .picker-swatch {
   width: 56px;
   height: 56px;
-  border: 3px solid #1e2a30;
-  border-radius: 8px;
+  object-fit: contain;
 }
 
 .picker-name {
@@ -727,10 +732,6 @@ html.panel-open .zoom-buttons {
   font-size: 15px;
   font-weight: 700;
   color: #2f7d44;
-}
-
-.palette-swatch span {
-  border-radius: 2px;
 }
 
 .palette-note {

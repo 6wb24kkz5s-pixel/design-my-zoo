@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
+import { spriteName } from '../art/names';
+import { registerArt } from '../art/phaser';
 import { PLOT_HEIGHT, PLOT_WIDTH } from '../camera';
-import { CAMERA, COLOURS, GRID, UNDO_LIMIT } from '../config';
+import { CAMERA, COLOURS, GRID, GRID_LINE_ALPHA, UNDO_LIMIT } from '../config';
 import {
   checkMaterial,
   failMessageFor,
@@ -93,9 +95,11 @@ export class ZooScene extends Phaser.Scene {
   }
 
   create(): void {
+    registerArt(this.textures);
     this.drawBase();
     this.groundLayer = new GroundLayer(this);
-    this.lines = this.add.graphics().setDepth(DEPTH.gridLines);
+    // The grid lines are faint, so the pictures underneath show through.
+    this.lines = this.add.graphics().setDepth(DEPTH.gridLines).setAlpha(GRID_LINE_ALPHA);
     this.itemLayer = new ItemLayer(this);
     this.roofLayer = new RoofLayer(this);
     this.animalLayer = new AnimalLayer(this);
@@ -153,6 +157,7 @@ export class ZooScene extends Phaser.Scene {
     });
     new TapController(this, () => this.paintTool === null, (square) => this.onTap(square));
     this.refresh();
+    this.syncLayerZoom();
 
     this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -166,7 +171,15 @@ export class ZooScene extends Phaser.Scene {
     const zoom = this.cameras.main.zoom;
     if (zoom !== this.linesZoom) {
       this.drawLines(zoom);
+      this.syncLayerZoom();
     }
+  }
+
+  /** Tells the pictures how big a grid square is on screen, so tiny ones can grow into clear icons. */
+  private syncLayerZoom(): void {
+    const squarePx = (GRID.squareSize * this.cameras.main.zoom) / PIXEL_RATIO;
+    this.itemLayer.setSquarePx(squarePx);
+    this.animalLayer.setSquarePx(squarePx);
   }
 
   private onResize(): void {
@@ -452,14 +465,14 @@ export class ZooScene extends Phaser.Scene {
     this.showCheck(this.draft ?? this.history.present);
   }
 
-  /** Sandy path over the whole plot, then the plain, unpainted building area on top. */
+  /** The sandy path over the whole plot, then the plain, unpainted building area on top. */
   private drawBase(): void {
     const inner = GRID.pathWidth * GRID.squareSize;
-    const g = this.add.graphics().setDepth(DEPTH.base);
-    g.fillStyle(COLOURS.path);
-    g.fillRect(0, 0, PLOT_WIDTH, PLOT_HEIGHT);
-    g.fillStyle(COLOURS.unpainted);
-    g.fillRect(inner, inner, PLOT_WIDTH - inner * 2, PLOT_HEIGHT - inner * 2);
+    this.add.tileSprite(0, 0, PLOT_WIDTH, PLOT_HEIGHT, spriteName.path).setOrigin(0).setDepth(DEPTH.base);
+    this.add
+      .tileSprite(inner, inner, PLOT_WIDTH - inner * 2, PLOT_HEIGHT - inner * 2, spriteName.plot)
+      .setOrigin(0)
+      .setDepth(DEPTH.base + 0.1);
   }
 
   /**

@@ -1,6 +1,6 @@
-import { ANIMAL_STYLE } from '../config';
+import { spriteName } from '../art/names';
 import { ANIMALS, type Animal } from '../data/content';
-import { cssColour } from './colour';
+import { spriteImg } from './sprite';
 
 export interface AnimalMenu {
   /** The 🐾 Animals button and its drop-down, ready to put in the top bar. */
@@ -8,9 +8,6 @@ export interface AnimalMenu {
   /** Ticks the animals that are already in the zoo. */
   setPlaced(animalIds: readonly string[]): void;
 }
-
-/** Size of one square in the little shape preview on each card, in CSS pixels. */
-const SWATCH_SQUARE = 18;
 
 /**
  * 🐾 Animals: a drop-down of cards, one per animal, with a picture and its name.
@@ -71,17 +68,6 @@ function makeCard(animal: Animal, onTap: () => void): HTMLButtonElement {
   card.className = 'animal-card';
   card.setAttribute('aria-label', animal.label);
 
-  const [w, h] = animal.size;
-  const swatch = document.createElement('span');
-  swatch.className = 'animal-swatch';
-  swatch.style.gridTemplateColumns = `repeat(${w}, ${SWATCH_SQUARE}px)`;
-  swatch.style.gridTemplateRows = `repeat(${h}, ${SWATCH_SQUARE}px)`;
-  for (let i = 0; i < w * h; i++) {
-    const square = document.createElement('span');
-    square.style.background = cssColour(ANIMAL_STYLE.colour);
-    swatch.append(square);
-  }
-
   const name = document.createElement('span');
   name.className = 'animal-card-name';
   name.textContent = animal.label;
@@ -92,7 +78,7 @@ function makeCard(animal: Animal, onTap: () => void): HTMLButtonElement {
   tick.setAttribute('aria-hidden', 'true');
   tick.textContent = '✓ In the zoo';
 
-  card.append(swatch, name, tick);
+  card.append(spriteImg(spriteName.animal(animal.id), 'sprite animal-sprite'), name, tick);
   card.addEventListener('click', onTap);
   return card;
 }

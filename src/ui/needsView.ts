@@ -1,7 +1,7 @@
 // Turns an animal's needs into what the side panel shows: gentle messages, the visitor line,
 // and the picture checklist. All the wording comes from char-and-properties.json.
 
-import { FALLBACK_PAINT_STYLE, GROUND_STYLE, ITEM_STYLE, TAB_COLOURS } from '../config';
+import { needPicture } from '../art/pictures';
 import {
   ENCLOSURE_MESSAGES,
   failMessageFor,
@@ -42,7 +42,8 @@ export interface HeartView {
 /** One picture-and-name option on a checklist line (e.g. "Deep pool"). */
 export interface OptionView {
   label: string;
-  colour: number;
+  /** The name of its picture in the art. */
+  picture: string;
 }
 
 export interface ChecklistLineView {
@@ -146,14 +147,6 @@ export function withIcon(message: string, icon: string): string {
   return /\p{Extended_Pictographic}/u.test(message) ? message : `${icon} ${message}`;
 }
 
-/** The colour of the little picture for a ground type or an item. */
-function optionColour(id: string): number {
-  const ground = GROUND_STYLE[id];
-  if (ground) return ground.colour;
-  const feature = getFeature(id);
-  return TAB_COLOURS[feature?.tab ?? ''] ?? ITEM_STYLE.fallbackColour ?? FALLBACK_PAINT_STYLE.colour;
-}
-
 function optionLabel(id: string): string {
   return getGround(id)?.label ?? getFeature(id)?.label ?? id;
 }
@@ -162,7 +155,10 @@ function buildChecklistView(needs: AnimalNeeds): ChecklistLineView[] {
   return needs.checklist.map((item) => ({
     heartIcon: HEART_INFO[item.heart].icon,
     met: item.met,
-    options: item.options.map((id) => ({ label: optionLabel(id), colour: optionColour(id) })),
+    options: item.options.map((id) => ({
+      label: optionLabel(id),
+      picture: needPicture(id, featureCatalogue.isGround(id)),
+    })),
     rule: item.rule ? HINT_LABELS[item.rule] : null,
   }));
 }

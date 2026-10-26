@@ -122,6 +122,12 @@ export function getMaterial(id: string): Material | undefined {
   return { id, label: raw.label, properties };
 }
 
+/** Every material in the data file, whether it is used for fences, pools, roofs or anything else. */
+export const ALL_MATERIALS: readonly Material[] = Object.keys(rawMaterials).flatMap((id) => {
+  const material = getMaterial(id);
+  return material ? [material] : [];
+});
+
 /** The materials a fence can be made of. */
 export const FENCE_MATERIALS: readonly Material[] = (rawFeatures.fence?.materials ?? []).flatMap((id) => {
   const material = getMaterial(id);

@@ -1,6 +1,6 @@
-import { FALLBACK_PAINT_STYLE, MATERIAL_STYLE } from '../config';
+import { spriteName } from '../art/names';
 import { PROPERTIES, type Material } from '../data/content';
-import { cssColour } from './colour';
+import { spriteImg } from './sprite';
 
 export interface PickerHeading {
   icon: string;
@@ -68,9 +68,7 @@ function materialCard(material: Material, isCurrent: boolean, onChoose: () => vo
   card.className = isCurrent ? 'picker-card picker-card-current' : 'picker-card';
   card.setAttribute('aria-label', material.label);
 
-  const swatch = document.createElement('span');
-  swatch.className = 'picker-swatch';
-  swatch.style.background = cssColour((MATERIAL_STYLE[material.id] ?? FALLBACK_PAINT_STYLE).colour);
+  const swatch = spriteImg(spriteName.material(material.id), 'sprite picker-swatch');
 
   const name = document.createElement('span');
   name.className = 'picker-name';

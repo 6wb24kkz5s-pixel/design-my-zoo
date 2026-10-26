@@ -1,9 +1,11 @@
-import { FALLBACK_PAINT_STYLE, GROUND_STYLE, ITEM_STYLE, TAB_COLOURS, UI } from '../config';
+import { spriteName } from '../art/names';
+import { featurePicture, groundPicture } from '../art/pictures';
+import { UI } from '../config';
 import { featuresInTab, getMaterial, GROUND_TYPES, type PlaceableFeature } from '../data/content';
 import type { PaintTool } from '../logic/paint';
 import type { RoofTool } from '../logic/roofs';
 import { BIN_DROP } from '../scenes/DragController';
-import { cssColour } from './colour';
+import { spriteImg } from './sprite';
 
 export interface PaletteActions {
   /** A finger went down on an item card: start dragging that item. */
@@ -43,11 +45,6 @@ const FIRST_TAB = 'ground';
 export function tabIcon(tabId: string): string {
   return TABS.find((tab) => tab.id === tabId)?.icon ?? '';
 }
-
-/** Size of one square in the little shape preview on each card, in CSS pixels. */
-const SWATCH_SQUARE = 12;
-/** Size of the colour square on ground tool cards, in CSS pixels. */
-const TOOL_SWATCH = 30;
 
 interface ModeState {
   paint: PaintTool | null;
@@ -143,12 +140,8 @@ const noDetail = () => null;
 
 function groundTools(actions: PaletteActions): ToolCard[] {
   const paints = GROUND_TYPES.map((ground) => {
-    const swatch = document.createElement('span');
-    swatch.className = 'palette-tool-swatch';
-    swatch.style.width = swatch.style.height = `${TOOL_SWATCH}px`;
-    swatch.style.background = cssColour((GROUND_STYLE[ground.id] ?? FALLBACK_PAINT_STYLE).colour);
     return makeToolCard(
-      swatch,
+      spriteImg(groundPicture(ground.id), 'sprite palette-sprite palette-ground'),
       ground.label,
       () => actions.onToolTap({ layer: 'ground', value: ground.id }),
       ({ paint }) => paint?.layer === 'ground' && paint.value === ground.id,
@@ -160,7 +153,7 @@ function groundTools(actions: PaletteActions): ToolCard[] {
 
 function fenceTools(actions: PaletteActions): ToolCard[] {
   const fence = makeToolCard(
-    emojiSwatch('🧱'),
+    spriteImg(spriteName.fence('wood'), 'sprite palette-sprite'),
     'Fence',
     () => actions.onFenceTap(),
     ({ paint }) => paint?.layer === 'fence' && paint.value !== null,
@@ -172,7 +165,7 @@ function fenceTools(actions: PaletteActions): ToolCard[] {
 /** The Roof and "No roof" tools sit with the items in the Shelter tab. */
 function roofTools(actions: PaletteActions): ToolCard[] {
   const roof = makeToolCard(
-    emojiSwatch('🏠'),
+    spriteImg(spriteName.roof('metal_mesh'), 'sprite palette-sprite'),
     'Roof',
     () => actions.onRoofTap(),
     ({ roof: tool }) => tool !== null && tool.material !== null,
@@ -232,23 +225,11 @@ function makeItemCard(feature: PlaceableFeature, actions: PaletteActions): HTMLE
   card.className = 'palette-card';
   card.setAttribute('aria-label', feature.label);
 
-  const [w, h] = feature.size;
-  const swatch = document.createElement('div');
-  swatch.className = 'palette-swatch';
-  swatch.style.gridTemplateColumns = `repeat(${w}, ${SWATCH_SQUARE}px)`;
-  swatch.style.gridTemplateRows = `repeat(${h}, ${SWATCH_SQUARE}px)`;
-  const colour = cssColour(TAB_COLOURS[feature.tab] ?? ITEM_STYLE.fallbackColour);
-  for (let i = 0; i < w * h; i++) {
-    const square = document.createElement('span');
-    square.style.background = colour;
-    swatch.append(square);
-  }
-
   const name = document.createElement('span');
   name.className = 'palette-card-name';
   name.textContent = feature.label;
 
-  card.append(swatch, name);
+  card.append(spriteImg(featurePicture(feature.id), 'sprite palette-sprite'), name);
   card.addEventListener('pointerdown', (event) => actions.onCardPointerDown(feature.id, event));
   return card;
 }

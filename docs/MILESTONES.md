@@ -43,8 +43,18 @@ A good **first playable iteration** is M0–M4 (placeholder squares, no art yet)
 - **Done when:** all tests pass, and you can make all 12 animals happy by hand.
 
 ## M8 — Art, animation and sound
-- Original pixel sprites for everything, wander / swim / flap animations, escape peek, optional sound toggle, a pass on all text wording.
+Split into two iPad checks, because art is a matter of taste and should be seen first.
+
+### M8a — Art
+- Original 16×16 pixel sprites (drawn in code, no image files) for every animal, feature, food, ground type, fence, roof and result picture. Items are drawn once and made in every allowed material.
+- Clear, bold icons when zoomed out; animal name tags when zoomed in.
+- Pictures in the palette, animal drop-down, side panel, hint checklist and material picker.
+- `?gallery` on the address shows every picture. `docs/art/sprite-sheet.png` is a picture of them all.
 - **Done when:** it looks finished, and still runs smoothly with a full zoo.
+
+### M8b — Life, sound and wording
+- Wander / swim / flap animations, the escape peek, an optional sound toggle (off by default, sounds made by the iPad itself), and a pass on all text wording (a before-and-after list for approval).
+- **Done when:** the animals feel alive, and it still runs smoothly with a full zoo.
 
 ## M9 — Classroom trial
 - Test with 3–4 children or colleagues for 20 minutes. Watch for:

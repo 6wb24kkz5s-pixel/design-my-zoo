@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import { initArt } from './art';
+import { showGallery } from './art/gallery';
 import { COLOURS } from './config';
 import { PIXEL_RATIO } from './display';
 import { ZooScene } from './scenes/ZooScene';
@@ -44,15 +46,25 @@ function resizeGame(game: Phaser.Game, element: HTMLElement): void {
   }
 }
 
-// Phaser's WebGL renderer fails if it boots at 0×0, which can happen for a
-// moment when launching from the Home Screen. Wait until #game has a size,
-// then keep the game matched to it (including when the iPad is turned).
-let game: Phaser.Game | null = null;
-new ResizeObserver(() => {
-  if (parent.clientWidth === 0 || parent.clientHeight === 0) return;
-  if (!game) {
-    game = startGame(parent);
-  } else if (game.isBooted) {
-    resizeGame(game, parent);
-  }
-}).observe(parent);
+if (new URLSearchParams(location.search).has('gallery')) {
+  // A page for looking at every picture in the game (not linked from the game).
+  showGallery();
+} else {
+  // Draw all the pictures first: the game, its buttons and its panels all use them.
+  initArt();
+
+  // Phaser's WebGL renderer fails if it boots at 0×0, which can happen for a
+  // moment when launching from the Home Screen. Wait until #game has a size,
+  // then keep the game matched to it (including when the iPad is turned).
+  let game: Phaser.Game | null = null;
+  new ResizeObserver(() => {
+    if (parent.clientWidth === 0 || parent.clientHeight === 0) return;
+    if (!game) {
+      game = startGame(parent);
+      // For looking at the running game in the browser's console while developing (not in the live game).
+      if (import.meta.env.DEV) (window as unknown as { __game: Phaser.Game }).__game = game;
+    } else if (game.isBooted) {
+      resizeGame(game, parent);
+    }
+  }).observe(parent);
+}

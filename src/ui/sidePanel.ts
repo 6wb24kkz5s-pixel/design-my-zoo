@@ -1,6 +1,7 @@
+import { spriteName } from '../art/names';
 import { UI } from '../config';
-import { cssColour } from './colour';
 import type { ChecklistLineView, HeartView, PanelView } from './needsView';
+import { spriteImg } from './sprite';
 
 export interface SidePanel {
   /** Shows (and keeps up to date) the panel for an animal, or slides it away if the view is null. */
@@ -26,8 +27,7 @@ export function createSidePanel(root: HTMLElement, onClose: () => void): SidePan
 
   function render(view: PanelView): void {
     const header = element('div', 'side-panel-header');
-    const picture = element('span', 'side-panel-picture');
-    picture.setAttribute('aria-hidden', 'true');
+    const picture = spriteImg(spriteName.animal(view.animalId), 'sprite side-panel-picture');
     const name = element('h2', 'side-panel-name', view.name);
     const close = element('button', 'ui-button side-panel-close');
     close.setAttribute('type', 'button');
@@ -124,10 +124,7 @@ function checklistRow(line: ChecklistLineView): HTMLElement {
     line.options.forEach((option, index) => {
       if (index > 0) what.append(element('span', 'check-row-or', 'or'));
       const chip = element('span', 'check-option');
-      const swatch = element('span', 'check-option-swatch');
-      swatch.style.background = cssColour(option.colour);
-      swatch.setAttribute('aria-hidden', 'true');
-      chip.append(swatch, element('span', 'check-option-label', option.label));
+      chip.append(spriteImg(option.picture, 'sprite check-option-swatch'), element('span', 'check-option-label', option.label));
       what.append(chip);
     });
   }

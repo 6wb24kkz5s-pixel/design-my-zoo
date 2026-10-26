@@ -1,50 +1,61 @@
 import Phaser from 'phaser';
-import { FALLBACK_PAINT_STYLE, FENCE_DRAW, GRID, GROUND_STYLE, MATERIAL_STYLE } from '../config';
+import { GROUND_VARIANTS, spriteName } from '../art/names';
+import { ART_KEY } from '../art/phaser';
+import { GRID } from '../config';
 import { checkMaterial } from '../data/content';
 import { parseSquareKey, type SquareMap, type Zoo } from '../logic/zoo';
 import { DEPTH } from './depth';
-import { dashedRect, drawBlock } from './draw';
+
+type Pool = Map<string, Phaser.GameObjects.Image>;
 
 /**
- * Draws painted ground (under the grid lines) and fences (over them) with
- * placeholder colours and patterns. A fence that is not strong has a dashed outline.
+ * Draws painted ground (under the grid lines) and fences (over them) from the pictures. A fence that is
+ * not strong is cracked and chipped. Only squares that changed are touched, so painting stays smooth.
  */
 export class GroundLayer {
-  private readonly ground: Phaser.GameObjects.Graphics;
-  private readonly fences: Phaser.GameObjects.Graphics;
+  private readonly ground: Pool = new Map();
+  private readonly fences: Pool = new Map();
 
-  constructor(scene: Phaser.Scene) {
-    this.ground = scene.add.graphics().setDepth(DEPTH.ground);
-    this.fences = scene.add.graphics().setDepth(DEPTH.fences);
-  }
+  constructor(private readonly scene: Phaser.Scene) {}
 
   render(zoo: Zoo): void {
-    this.ground.clear();
-    forEachSquare(zoo.ground, (col, row, id) => {
-      const size = GRID.squareSize;
-      drawBlock(this.ground, col * size, row * size, size, size, GROUND_STYLE[id] ?? FALLBACK_PAINT_STYLE);
-    });
+    this.sync(this.ground, zoo.ground, DEPTH.ground, (col, row, id) => spriteName.ground(id, variantFor(col, row)));
+    this.sync(this.fences, zoo.fences, DEPTH.fences, (_col, _row, material) =>
+      spriteName.fence(material, !checkMaterial('fence', material).works),
+    );
+  }
 
-    this.fences.clear();
-    forEachSquare(zoo.fences, (col, row, material) => {
-      const inset = FENCE_DRAW.inset;
-      const size = GRID.squareSize - inset * 2;
-      const x = col * GRID.squareSize + inset;
-      const y = row * GRID.squareSize + inset;
-      drawBlock(this.fences, x, y, size, size, MATERIAL_STYLE[material] ?? FALLBACK_PAINT_STYLE);
-      this.fences.lineStyle(FENCE_DRAW.borderWidth, FENCE_DRAW.border, 1);
-      if (checkMaterial('fence', material).works) {
-        this.fences.strokeRect(x, y, size, size);
+  /** Makes the pictures in `pool` match the squares in `wanted`. */
+  private sync(
+    pool: Pool,
+    wanted: SquareMap,
+    depth: number,
+    frameFor: (col: number, row: number, value: string) => string,
+  ): void {
+    for (const [key, value] of Object.entries(wanted)) {
+      const square = parseSquareKey(key);
+      if (!square) continue;
+      const frame = frameFor(square.col, square.row, value);
+      const existing = pool.get(key);
+      if (existing) {
+        if (existing.frame.name !== frame) existing.setFrame(frame);
       } else {
-        dashedRect(this.fences, x, y, size, size, FENCE_DRAW.weakDash, FENCE_DRAW.weakGap);
+        const image = this.scene.add
+          .image(square.col * GRID.squareSize, square.row * GRID.squareSize, ART_KEY, frame)
+          .setOrigin(0)
+          .setDepth(depth);
+        pool.set(key, image);
       }
-    });
+    }
+    for (const [key, image] of pool) {
+      if (key in wanted) continue;
+      image.destroy();
+      pool.delete(key);
+    }
   }
 }
 
-function forEachSquare(map: SquareMap, draw: (col: number, row: number, value: string) => void): void {
-  for (const [key, value] of Object.entries(map)) {
-    const square = parseSquareKey(key);
-    if (square) draw(square.col, square.row, value);
-  }
+/** Which of the ground variations a square gets: always the same for the same square. */
+function variantFor(col: number, row: number): number {
+  return (col * 7 + row * 13 + col * row) % GROUND_VARIANTS;
 }

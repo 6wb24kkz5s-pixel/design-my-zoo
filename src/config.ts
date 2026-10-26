@@ -11,6 +11,9 @@ export const GRID = {
   lineWidth: 1,
 } as const;
 
+/** How strongly the grid lines show over the pictures (0 to 1). */
+export const GRID_LINE_ALPHA = 0.45;
+
 /** Space kept around the grid when fitting it to the screen, in CSS pixels. */
 export const SCREEN_MARGIN = 16;
 

@@ -1,47 +1,38 @@
 import Phaser from 'phaser';
-import {
-  FALLBACK_PAINT_STYLE,
-  GHOST_STYLE,
-  GRID,
-  ITEM_PICTURE,
-  ITEM_STYLE,
-  MATERIAL_STYLE,
-  RESULT_STYLE,
-  RESULT_VISUAL,
-  TAB_COLOURS,
-  type PaintStyle,
-  type ResultVisual,
-} from '../config';
-import { checkMaterial, getFeature, getMaterial, PROPERTIES, type PlaceableFeature } from '../data/content';
+import { iconScale, usesIcon } from '../art/lod';
+import { spriteName } from '../art/names';
+import { ART_KEY } from '../art/phaser';
+import { GHOST_STYLE, GRID, ITEM_PICTURE, ITEM_STYLE, RESULT_STYLE, RESULT_VISUAL, type ResultVisual } from '../config';
+import { checkMaterial, getFeature, PROPERTIES, type PlaceableFeature } from '../data/content';
 import type { PlacedItem, Size, Zoo } from '../logic/zoo';
 import { DEPTH } from './depth';
-import { dashedRect, drawBlock } from './draw';
+import { dashedRect } from './draw';
 import { createBubbleText, createLabel } from './labels';
 
-/** What one item looks like right now. */
-interface Look {
-  feature: PlaceableFeature;
-  material: string | null;
-  /** The picture for a material that does not suit the job, or null if it suits (or there is no choice). */
-  visual: ResultVisual | null;
-  /** 0 → 1 while the result plays out (the pool drains, the island sinks…); 1 once it has finished. */
-  progress: number;
-  width: number;
-  height: number;
-}
-
 interface ItemView {
+  /** Sits at the middle of the item, so scaling it for a zoomed-out icon keeps it in place. */
   container: Phaser.GameObjects.Container;
   /** What the picture was made from. When it changes (a new material), the picture is made again. */
   signature: string;
   tweens: Phaser.Tweens.Tween[];
+  /** The width and height of the item, in world pixels. */
+  width: number;
+  height: number;
+  /** For a plain one-picture item: the picture, and its normal and zoomed-out frames. */
+  plain: { image: Phaser.GameObjects.Image; normal: string; icon: string } | null;
+  /** The smaller side of the item, in squares. */
+  smallestSide: number;
+}
+
+/** Animation timings and tweens read this to know what to draw. */
+interface Look {
+  visual: ResultVisual | null;
 }
 
 /**
- * Draws placed items as placeholder blocks with their names and materials. A material that
- * does not suit the job gets a simple picture of what goes wrong (a pool drains, an island
- * sinks, a hut falls down, sun shines through a shade cover) and a badge showing the
- * property it is missing. M8 replaces these with real art.
+ * Draws placed items from the pictures. A material that does not suit its job gets a picture of what
+ * goes wrong (a pool drains, an island sinks, a hut falls down, sun shines through a shade cover,
+ * a swing breaks) and a badge showing the property it is missing.
  *
  * Also draws the green / grey outline shown while dragging (for items and animals).
  */
@@ -52,6 +43,8 @@ export class ItemLayer {
   private readonly reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   /** False until the first render, so a saved zoo appears at once and only new changes play out. */
   private ready = false;
+  /** The width of one grid square on screen, so pictures can grow into clear icons when zoomed out. */
+  private squarePx: number = GRID.squareSize;
 
   constructor(private readonly scene: Phaser.Scene) {
     this.ghost = scene.add.graphics().setDepth(DEPTH.ghost);
@@ -78,7 +71,7 @@ export class ItemLayer {
         this.views.set(item.id, view);
       }
       view.container
-        .setPosition(item.col * GRID.squareSize, item.row * GRID.squareSize)
+        .setPosition(item.col * GRID.squareSize + view.width / 2, item.row * GRID.squareSize + view.height / 2)
         .setAlpha(item.id === movingId ? ITEM_STYLE.movingAlpha : 1);
     }
 
@@ -88,6 +81,18 @@ export class ItemLayer {
       this.views.delete(id);
     }
     this.ready = true;
+  }
+
+  /** The plot was zoomed: small pictures grow into bold icons when they would be tiny on screen. */
+  setSquarePx(squarePx: number): void {
+    this.squarePx = squarePx;
+    for (const view of this.views.values()) this.applyIconScale(view);
+  }
+
+  private applyIconScale(view: ItemView): void {
+    const scale = iconScale(this.squarePx, view.smallestSide);
+    view.container.setScale(scale);
+    if (view.plain) view.plain.image.setFrame(usesIcon(scale) ? view.plain.icon : view.plain.normal);
   }
 
   /** Shows where a dragged item or animal would land: green and solid if it fits, grey and dashed if not. */
@@ -129,79 +134,144 @@ export class ItemLayer {
 
   private createView(item: PlacedItem, feature: PlaceableFeature, signature: string, animate: boolean): ItemView {
     const scene = this.scene;
-    const inset = ITEM_STYLE.inset;
     const width = feature.size[0] * GRID.squareSize;
     const height = feature.size[1] * GRID.squareSize;
-
     const check = item.material ? checkMaterial(item.kind, item.material) : null;
     const visual = check?.missing ? (RESULT_VISUAL[check.missing] ?? null) : null;
-    const look: Look = {
-      feature,
-      material: item.material ?? null,
-      visual,
-      progress: 1,
-      width: width - inset * 2,
-      height: height - inset * 2,
-    };
+    const look: Look = { visual };
+    const picture = ITEM_PICTURE[feature.id];
+    const material = item.material;
 
-    // The body is centred on the item's top edge, so a swing can sway from the top.
-    const graphics = scene.add.graphics().setPosition(-width / 2, 0);
-    const materialName = item.material ? getMaterial(item.material)?.label : undefined;
-    const label = createLabel(
-      scene,
-      0,
-      height / 2,
-      materialName ? `${feature.label}\n${materialName}` : feature.label,
-      width,
-    );
-    const body = scene.add.container(width / 2, 0, [graphics, label]);
-    const parts: Phaser.GameObjects.GameObject[] = [body];
-    if (check?.missing) {
-      const badge = this.makeBadge(width, check.missing);
-      if (badge) parts.push(badge);
-    }
-    const container = scene.add
-      .container(0, 0, parts)
-      .setDepth(DEPTH.items + (feature.placeOn ? 0.1 : 0));
-
+    const parts: Phaser.GameObjects.GameObject[] = [];
     const tweens: Phaser.Tweens.Tween[] = [];
-    const plays = visual !== null;
-    if (animate && plays && !this.reduceMotion) {
-      look.progress = 0;
+    const playing = animate && visual !== null && !this.reduceMotion;
+    const image = (frame: string, x = 0, y = 0) => scene.add.image(x, y, ART_KEY, frame);
+    const tween = (config: Phaser.Types.Tweens.TweenBuilderConfig) => tweens.push(scene.tweens.add(config));
+    const progress = (onUpdate: (value: number) => void, onDone?: () => void) =>
       tweens.push(
         scene.tweens.addCounter({
           from: 0,
           to: 1,
           duration: RESULT_STYLE.animateMs,
           ease: 'Sine.easeInOut',
-          onUpdate: (tween) => {
-            look.progress = tween.getValue() ?? 1;
-            drawBody(graphics, look);
-          },
+          onUpdate: (t) => onUpdate(t.getValue() ?? 1),
+          onComplete: onDone,
         }),
       );
-    }
-    drawBody(graphics, look);
 
-    // A swing that is strong enough gently sways.
-    if (ITEM_PICTURE[feature.id] === 'swing' && check?.works && !this.reduceMotion) {
-      tweens.push(
-        scene.tweens.add({
-          targets: body,
+    let plain: ItemView['plain'] = null;
+
+    if (picture === 'waterHolder' && material) {
+      // The rim and floor, then the water on top. A leaky one drains until only cracks are left.
+      parts.push(image(spriteName.item(feature.id, material)));
+      const water = image(spriteName.water(feature.id));
+      const cracks = image(spriteName.cracks(feature.id)).setVisible(false);
+      parts.push(water, cracks);
+      const level = (value: number) => {
+        water.setScale(Math.max(value, 0.001)).setVisible(value > 0.02);
+        cracks.setVisible(value <= 0.02);
+      };
+      if (look.visual === 'drain') {
+        if (playing) {
+          level(1);
+          progress((p) => level(1 - p));
+        } else {
+          level(0);
+        }
+      }
+    } else if (picture === 'island' && material) {
+      const raft = image(spriteName.item(feature.id, material));
+      const ripples = image(spriteName.ripple).setVisible(false).setScale(1.6);
+      parts.push(ripples, raft);
+      const sink = (p: number) => {
+        raft.setScale(1 - 0.3 * p).setAlpha(1 - 0.5 * p).setY(p * height * 0.12);
+        ripples.setVisible(p > 0).setAlpha(p);
+      };
+      if (look.visual === 'sink') {
+        if (playing) {
+          progress(sink);
+        } else {
+          sink(1);
+        }
+      }
+    } else if (picture === 'hut' && material) {
+      // The hut is anchored at its base, so it can collapse downwards into a heap.
+      const hut = image(spriteName.item(feature.id, material), 0, height / 2).setOrigin(0.5, 1);
+      const rubble = image(spriteName.rubble(material), 0, height / 2).setOrigin(0.5, 1).setAlpha(0);
+      parts.push(hut, rubble);
+      const fall = (p: number) => {
+        hut.setScale(1, 1 - 0.55 * p).setAlpha(1 - p * 0.9);
+        rubble.setAlpha(p);
+      };
+      if (look.visual === 'fall') {
+        if (playing) {
+          progress(fall);
+        } else {
+          fall(1);
+        }
+      }
+    } else if (picture === 'shade' && material) {
+      const sun = image(spriteName.sun).setAlpha(0);
+      parts.push(image(spriteName.shadow), image(spriteName.item(feature.id, material)), sun);
+      if (look.visual === 'light') {
+        if (playing) {
+          progress((p) => sun.setAlpha(p));
+        } else {
+          sun.setAlpha(1);
+        }
+      }
+    } else if (picture === 'swing' && material) {
+      // A swing that is strong enough gently sways from its top bar. One that is not breaks.
+      const broken = look.visual === 'fall';
+      const frame = broken && !playing ? spriteName.swingBroken(material) : spriteName.item(feature.id, material);
+      const swing = image(frame, 0, -height / 2).setOrigin(0.5, 0);
+      parts.push(swing);
+      if (broken && playing) {
+        progress(
+          () => undefined,
+          () => swing.setFrame(spriteName.swingBroken(material)),
+        );
+      } else if (!broken && !this.reduceMotion) {
+        tween({
+          targets: swing,
           angle: { from: -RESULT_STYLE.swayDegrees, to: RESULT_STYLE.swayDegrees },
           duration: RESULT_STYLE.swayMs,
           ease: 'Sine.easeInOut',
           yoyo: true,
           repeat: -1,
-        }),
-      );
+        });
+      }
+    } else {
+      // Everything else is one picture. Zoomed out, it swaps to a bolder, outlined version.
+      const normal = spriteName.item(feature.id, material);
+      const icon = spriteName.icon(normal);
+      plain = { image: image(normal), normal, icon };
+      parts.push(plain.image);
     }
 
-    return { container, signature, tweens };
+    if (check?.missing) {
+      const badge = this.makeBadge(width, height, check.missing);
+      if (badge) parts.push(badge);
+    }
+
+    const container = scene.add
+      .container(0, 0, parts)
+      .setDepth(DEPTH.items + (feature.placeOn ? 0.1 : 0));
+    const view: ItemView = {
+      container,
+      signature,
+      tweens,
+      width,
+      height,
+      plain,
+      smallestSide: Math.min(feature.size[0], feature.size[1]),
+    };
+    this.applyIconScale(view);
+    return view;
   }
 
   /** A round badge in the corner showing the property the material is missing (e.g. 💧). */
-  private makeBadge(itemWidth: number, propertyId: string): Phaser.GameObjects.Container | null {
+  private makeBadge(itemWidth: number, itemHeight: number, propertyId: string): Phaser.GameObjects.Container | null {
     const icon = PROPERTIES.find((p) => p.id === propertyId)?.icon;
     if (!icon) return null;
     const radius = Math.min(RESULT_STYLE.badgeRadius, itemWidth / 4);
@@ -213,197 +283,6 @@ export class ItemLayer {
     shape.strokeCircle(0, 0, radius);
     const symbol = createBubbleText(this.scene, icon, RESULT_STYLE.badgeFontSize * (radius / RESULT_STYLE.badgeRadius), '#1e2a30');
 
-    return this.scene.add.container(itemWidth - radius - 1, radius + 1, [shape, symbol]);
+    return this.scene.add.container(itemWidth / 2 - radius - 1, -itemHeight / 2 + radius + 1, [shape, symbol]);
   }
-}
-
-/** Draws one item's picture at its current progress. */
-function drawBody(g: Phaser.GameObjects.Graphics, look: Look): void {
-  g.clear();
-  g.setAlpha(1);
-  const { feature, width: w, height: h } = look;
-  const x = ITEM_STYLE.inset;
-  const y = ITEM_STYLE.inset;
-  const style: PaintStyle = look.material
-    ? (MATERIAL_STYLE[look.material] ?? FALLBACK_PAINT_STYLE)
-    : { colour: TAB_COLOURS[feature.tab] ?? ITEM_STYLE.fallbackColour, pattern: 'none', patternColour: ITEM_STYLE.border };
-
-  switch (ITEM_PICTURE[feature.id]) {
-    case 'waterHolder':
-      drawWaterHolder(g, look, x, y, w, h, style);
-      break;
-    case 'island':
-      drawIsland(g, look, x, y, w, h, style);
-      break;
-    case 'hut':
-      drawHut(g, look, x, y, w, h, style);
-      break;
-    case 'shade':
-      drawShade(g, look, x, y, w, h, style);
-      break;
-    case 'swing':
-      drawSwing(g, look, x, y, w, h, style);
-      break;
-    default:
-      drawBlock(g, x, y, w, h, style);
-      outline(g, x, y, w, h);
-  }
-
-  // A gentle dashed outline marks a material that does not suit its job.
-  if (look.visual) {
-    g.lineStyle(RESULT_STYLE.badgeBorderWidth, RESULT_STYLE.badgeBorder, 1);
-    dashedRect(g, x - 3, y - 3, w + 6, h + 6, RESULT_STYLE.problemDash, RESULT_STYLE.problemGap);
-  }
-}
-
-function outline(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number): void {
-  g.lineStyle(ITEM_STYLE.borderWidth, ITEM_STYLE.border, 1);
-  g.strokeRect(x, y, w, h);
-}
-
-/** Pool, pond or bowl: a rim of the chosen material round the water. A leaky one drains and stays empty. */
-function drawWaterHolder(
-  g: Phaser.GameObjects.Graphics,
-  look: Look,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  style: PaintStyle,
-): void {
-  drawBlock(g, x, y, w, h, style);
-  outline(g, x, y, w, h);
-
-  const rim = Math.min(RESULT_STYLE.rim, w / 4, h / 4);
-  const ix = x + rim;
-  const iy = y + rim;
-  const iw = w - rim * 2;
-  const ih = h - rim * 2;
-  g.fillStyle(RESULT_STYLE.dry, 1);
-  g.fillRect(ix, iy, iw, ih);
-
-  const level = look.visual === 'drain' ? 1 - look.progress : 1;
-  if (level > 0.02) {
-    const wetW = iw * level;
-    const wetH = ih * level;
-    g.fillStyle(RESULT_STYLE.water, 1);
-    g.fillRect(ix + (iw - wetW) / 2, iy + (ih - wetH) / 2, wetW, wetH);
-    g.lineStyle(2, RESULT_STYLE.waterLine, 1);
-    g.lineBetween(ix + wetW * 0.15 + (iw - wetW) / 2, iy + ih * 0.35, ix + wetW * 0.55 + (iw - wetW) / 2, iy + ih * 0.35);
-    g.lineBetween(ix + wetW * 0.4 + (iw - wetW) / 2, iy + ih * 0.65, ix + wetW * 0.85 + (iw - wetW) / 2, iy + ih * 0.65);
-  } else {
-    // Empty: cracks in the dry floor.
-    g.lineStyle(2, RESULT_STYLE.crack, 1);
-    g.lineBetween(ix + iw * 0.2, iy + ih * 0.3, ix + iw * 0.5, iy + ih * 0.55);
-    g.lineBetween(ix + iw * 0.5, iy + ih * 0.55, ix + iw * 0.8, iy + ih * 0.4);
-    g.lineBetween(ix + iw * 0.5, iy + ih * 0.55, ix + iw * 0.45, iy + ih * 0.85);
-  }
-  g.lineStyle(2, ITEM_STYLE.border, 1);
-  g.strokeRect(ix, iy, iw, ih);
-}
-
-/** Floating island: a block on the water. One that does not float sinks, fades and makes ripples. */
-function drawIsland(
-  g: Phaser.GameObjects.Graphics,
-  look: Look,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  style: PaintStyle,
-): void {
-  const sink = look.visual === 'sink' ? look.progress : 0;
-  const scale = 1 - 0.3 * sink;
-  const bw = w * scale;
-  const bh = h * scale;
-  const bx = x + (w - bw) / 2;
-  const by = y + (h - bh) / 2 + sink * h * 0.12;
-
-  drawBlock(g, bx, by, bw, bh, style);
-  outline(g, bx, by, bw, bh);
-  if (sink > 0) {
-    g.lineStyle(3, RESULT_STYLE.waterLine, 1);
-    g.strokeEllipse(x + w / 2, y + h / 2, w * (0.9 + 0.2 * sink), h * (0.9 + 0.2 * sink));
-    g.setAlpha(1 - 0.5 * sink);
-  }
-}
-
-/** Hut: a block with a ridge down the middle. One that is not strong collapses into a heap. */
-function drawHut(
-  g: Phaser.GameObjects.Graphics,
-  look: Look,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  style: PaintStyle,
-): void {
-  const fall = look.visual === 'fall' ? look.progress : 0;
-  const bh = h * (1 - 0.55 * fall);
-  const by = y + (h - bh);
-
-  drawBlock(g, x, by, w, bh, style);
-  outline(g, x, by, w, bh);
-  g.lineStyle(4, style.patternColour, 1);
-  if (fall < 0.5) {
-    g.lineBetween(x + w / 2, by, x + w / 2, by + bh);
-  }
-  if (fall > 0) {
-    // Fallen planks lying about.
-    g.lineStyle(4, style.patternColour, fall);
-    g.lineBetween(x + w * 0.1, by + bh * 0.3, x + w * 0.45, by + bh * 0.7);
-    g.lineBetween(x + w * 0.9, by + bh * 0.25, x + w * 0.6, by + bh * 0.8);
-    g.lineBetween(x + w * 0.3, by + bh * 0.85, x + w * 0.75, by + bh * 0.5);
-  }
-}
-
-/** Shade cover: a block with a shadow under it. Glass is transparent, so sun shines straight through. */
-function drawShade(
-  g: Phaser.GameObjects.Graphics,
-  look: Look,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  style: PaintStyle,
-): void {
-  g.fillStyle(RESULT_STYLE.shadow, RESULT_STYLE.shadowAlpha);
-  g.fillRect(x + 6, y + 6, w, h);
-  drawBlock(g, x, y, w, h, style);
-  outline(g, x, y, w, h);
-
-  if (look.visual === 'light') {
-    const p = look.progress;
-    g.fillStyle(RESULT_STYLE.sun, RESULT_STYLE.sunAlpha * p);
-    g.fillRect(x, y, w, h);
-    g.lineStyle(4, RESULT_STYLE.sun, p);
-    for (const k of [0.25, 0.5, 0.75]) {
-      g.lineBetween(x + w * k - w * 0.2, y - 4, x + w * k + w * 0.2, y + h + 4);
-    }
-  }
-}
-
-/**
- * Swing: a frame with a seat of the chosen material. A swing that is not strong enough
- * breaks: the ropes snap short and the seat drops to the ground.
- */
-function drawSwing(
-  g: Phaser.GameObjects.Graphics,
-  look: Look,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  style: PaintStyle,
-): void {
-  const broken = look.visual === 'fall' ? look.progress : 0;
-  const ropeEnd = y + h * (0.7 - 0.4 * broken);
-  const seatTop = y + h * (0.65 + 0.07 * broken);
-
-  g.lineStyle(4, ITEM_STYLE.border, 1);
-  g.lineBetween(x, y + 2, x + w, y + 2);
-  g.lineBetween(x + w * 0.2, y + 2, x + w * 0.2, ropeEnd);
-  g.lineBetween(x + w * 0.8, y + 2, x + w * 0.8, ropeEnd);
-  drawBlock(g, x + w * 0.1, seatTop, w * 0.8, h * 0.28, style);
-  outline(g, x + w * 0.1, seatTop, w * 0.8, h * 0.28);
 }
