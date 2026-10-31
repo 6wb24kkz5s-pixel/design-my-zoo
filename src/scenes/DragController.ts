@@ -149,7 +149,8 @@ export class DragController {
 
   /** Only the first finger on the screen (the primary pointer) can start a drag. */
   private canStart(event: PointerEvent): boolean {
-    return this.drag === null && event.isPrimary;
+    // Only the left button (or a finger): the middle and right buttons pan the view.
+    return this.drag === null && event.isPrimary && event.button === 0;
   }
 
   private begin(event: PointerEvent, source: DragSource, label: string, size: Size, grab: Drag['grab']): void {

@@ -138,7 +138,7 @@ export class ZooScene extends Phaser.Scene {
     });
     this.paintIndicator = createPaintIndicator(ui, () => this.stopTools());
 
-    this.cameraController = new CameraController(this, this.controls.setZoomState);
+    this.cameraController = new CameraController(this, this.controls.setZoomState, (world) => this.isEmptyGround(world));
     this.dragController = new DragController(this, this.itemLayer, {
       zoo: () => this.history.present,
       commit: (next) => this.commit(next),
@@ -188,6 +188,18 @@ export class ZooScene extends Phaser.Scene {
       this.drawLines(zoom);
       this.syncLayerZoom();
     }
+  }
+
+  /**
+   * With a mouse, the left button pans when it goes down on ground with nothing to pick up, and no paint tool
+   * is on. (Roof mode only taps, so it can pan too.)
+   */
+  private isEmptyGround(world: { x: number; y: number }): boolean {
+    if (this.paintTool !== null) return false;
+    if (this.animalLayer.idAtPoint(world.x, world.y)) return false;
+    const col = Math.floor(world.x / GRID.squareSize);
+    const row = Math.floor(world.y / GRID.squareSize);
+    return itemsAt(this.history.present, featureCatalogue, col, row).length === 0;
   }
 
   /** Tells the pictures how big a grid square is on screen, so tiny ones can grow into clear icons. */

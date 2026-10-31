@@ -73,6 +73,19 @@ export function pan(view: View, dx: number, dy: number): View {
   return { zoom: view.zoom, midX: view.midX - dx / view.zoom, midY: view.midY - dy / view.zoom };
 }
 
+/**
+ * How much one mouse-wheel or trackpad event zooms: above 1 zooms in, below 1 zooms out. A scroll of
+ * one wheel notch (about 100) changes the zoom by roughly 15%. A trackpad pinch arrives as small
+ * ctrl + wheel events, so those count for more.
+ */
+export function wheelZoomFactor(deltaY: number, deltaMode: number, pinch: boolean): number {
+  const LINE = 1;
+  const PAGE = 2;
+  const pixels = deltaMode === LINE ? deltaY * 16 : deltaMode === PAGE ? deltaY * 100 : deltaY;
+  const capped = Math.min(Math.max(pixels, -300), 300); // one big flick should not jump the whole way
+  return Math.exp(-capped * (pinch ? 0.01 : 0.0015));
+}
+
 /** The centre of the screen area not covered by the overlay. */
 export function usableCentre(viewport: Viewport, insets: Insets): Point {
   return {

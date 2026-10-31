@@ -35,7 +35,7 @@ export class TapController {
   };
 
   private readonly onCanvasPointerDown = (event: PointerEvent): void => {
-    if (!event.isPrimary || !this.enabled()) return;
+    if (!event.isPrimary || event.button !== 0 || !this.enabled()) return;
     this.press = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, time: event.timeStamp };
   };
 

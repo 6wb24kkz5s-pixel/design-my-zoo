@@ -52,7 +52,7 @@ export class PaintController {
 
   private readonly onCanvasPointerDown = (event: PointerEvent): void => {
     const tool = this.host.tool();
-    if (!tool || this.stroke || !event.isPrimary) return;
+    if (!tool || this.stroke || !event.isPrimary || event.button !== 0) return;
     event.preventDefault();
     const square = pointerToSquare(this.scene, event);
     const base = this.host.zoo();

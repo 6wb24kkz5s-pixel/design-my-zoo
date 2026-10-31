@@ -7,6 +7,7 @@ import {
   pan,
   screenToWorld,
   usableCentre,
+  wheelZoomFactor,
   zoomAt,
   zoomLimits,
   type Insets,
@@ -25,20 +26,84 @@ const LIMIT_TOLERANCE = 1e-6;
 /**
  * Two fingers pan and pinch-zoom the camera; one finger does nothing here.
  * The + / – buttons and "See whole zoo" animate the camera.
+ *
+ * On a computer: the mouse wheel (or a trackpad pinch) zooms where the pointer is, and dragging pans.
+ * The middle or right button always pans. The left button pans when it goes down on empty ground
+ * (`canLeftPan` says whether that spot is empty), so it never fights with placing, dragging or painting.
  */
 export class CameraController {
   private view: View;
   private pinch: { mid: Point; distance: number } | null = null;
   private tween: Phaser.Tweens.Tween | null = null;
   private atMin = true;
+  /** A mouse drag that is panning the view, with where the pointer was last. */
+  private mousePan: { pointerId: number; x: number; y: number } | null = null;
 
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly onZoomState: ZoomStateListener,
+    /** True if a left-button press at this world point should pan (nothing there to pick up, no tool on). */
+    private readonly canLeftPan: (world: Point) => boolean = () => false,
   ) {
     this.view = fitView(this.viewport(), this.insets(), this.margin());
     this.setView(this.view);
+
+    const canvas = scene.game.canvas;
+    canvas.addEventListener('wheel', this.onWheel, { passive: false });
+    canvas.addEventListener('pointerdown', this.onMouseDown);
+    canvas.addEventListener('contextmenu', (event) => event.preventDefault());
+    window.addEventListener('pointermove', this.onMouseMove);
+    window.addEventListener('pointerup', this.onMouseUp);
+    window.addEventListener('pointercancel', this.onMouseUp);
+    window.addEventListener('blur', this.endMousePan);
   }
+
+  /** A point on the page (CSS pixels) as a point on the screen in game pixels. */
+  private toScreen(clientX: number, clientY: number): Point {
+    const box = this.scene.game.canvas.getBoundingClientRect();
+    return { x: (clientX - box.left) * PIXEL_RATIO, y: (clientY - box.top) * PIXEL_RATIO };
+  }
+
+  private readonly onWheel = (event: WheelEvent): void => {
+    event.preventDefault(); // the page itself must not scroll or zoom
+    this.stopTween();
+    const viewport = this.viewport();
+    const factor = wheelZoomFactor(event.deltaY, event.deltaMode, event.ctrlKey);
+    const zoom = clampZoom(this.view.zoom * factor, this.limits());
+    const focus = this.toScreen(event.clientX, event.clientY);
+    this.setView(clampView(zoomAt(this.view, viewport, zoom, focus), viewport, this.insets(), this.margin()));
+  };
+
+  private readonly onMouseDown = (event: PointerEvent): void => {
+    if (event.pointerType !== 'mouse' || this.mousePan) return;
+    const leftOnEmpty =
+      event.button === 0 &&
+      this.canLeftPan(screenToWorld(this.view, this.viewport(), this.toScreen(event.clientX, event.clientY)));
+    if (event.button !== 1 && event.button !== 2 && !leftOnEmpty) return;
+    event.preventDefault(); // no autoscroll circle on a middle click
+    this.stopTween();
+    this.mousePan = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+    this.scene.game.canvas.style.cursor = 'grabbing';
+  };
+
+  private readonly onMouseMove = (event: PointerEvent): void => {
+    const drag = this.mousePan;
+    if (drag?.pointerId !== event.pointerId) return;
+    const viewport = this.viewport();
+    const moved = pan(this.view, (event.clientX - drag.x) * PIXEL_RATIO, (event.clientY - drag.y) * PIXEL_RATIO);
+    this.setView(clampView(moved, viewport, this.insets(), this.margin()));
+    drag.x = event.clientX;
+    drag.y = event.clientY;
+  };
+
+  private readonly onMouseUp = (event: PointerEvent): void => {
+    if (this.mousePan?.pointerId === event.pointerId) this.endMousePan();
+  };
+
+  private readonly endMousePan = (): void => {
+    this.mousePan = null;
+    this.scene.game.canvas.style.cursor = '';
+  };
 
   /** Call once per frame. Reads the two touch pointers and applies any pinch or pan. */
   update(): void {

@@ -8,6 +8,7 @@ import {
   PLOT_HEIGHT,
   PLOT_WIDTH,
   screenToWorld,
+  wheelZoomFactor,
   zoomAt,
   zoomLimits,
   type Insets,
@@ -67,6 +68,36 @@ describe('zooming and panning', () => {
     const view: View = { zoom: 2, midX: 700, midY: 500 };
     const moved = pan(view, 100, -40);
     expect(moved).toEqual({ zoom: 2, midX: 650, midY: 520 });
+  });
+});
+
+describe('mouse wheel zoom', () => {
+  it('scrolling up zooms in and scrolling down zooms out', () => {
+    expect(wheelZoomFactor(-100, 0, false)).toBeGreaterThan(1);
+    expect(wheelZoomFactor(100, 0, false)).toBeLessThan(1);
+    expect(wheelZoomFactor(0, 0, false)).toBe(1);
+  });
+
+  it('one wheel notch changes the zoom by about 15%', () => {
+    expect(wheelZoomFactor(-100, 0, false)).toBeCloseTo(1.16, 1);
+  });
+
+  it('a notch up then a notch down comes back to the same zoom', () => {
+    expect(wheelZoomFactor(-100, 0, false) * wheelZoomFactor(100, 0, false)).toBeCloseTo(1, 10);
+  });
+
+  it('counts lines and pages as bigger scrolls', () => {
+    expect(wheelZoomFactor(-3, 1, false)).toBeGreaterThan(wheelZoomFactor(-3, 0, false));
+    expect(wheelZoomFactor(-1, 2, false)).toBeGreaterThan(wheelZoomFactor(-1, 1, false));
+  });
+
+  it('does not jump the whole way on one huge flick', () => {
+    expect(wheelZoomFactor(-5000, 0, false)).toBeCloseTo(wheelZoomFactor(-300, 0, false), 10);
+    expect(wheelZoomFactor(-5000, 0, false)).toBeLessThan(2);
+  });
+
+  it('a trackpad pinch (small ctrl + wheel events) zooms more than the same plain scroll', () => {
+    expect(wheelZoomFactor(-5, 0, true)).toBeGreaterThan(wheelZoomFactor(-5, 0, false));
   });
 });
 
