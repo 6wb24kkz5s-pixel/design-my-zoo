@@ -1,6 +1,6 @@
 import { spriteName } from '../art/names';
 import { featurePicture, groundPicture } from '../art/pictures';
-import { UI } from '../config';
+import { TAP, UI } from '../config';
 import { featuresInTab, getMaterial, GROUND_TYPES, type PlaceableFeature } from '../data/content';
 import type { PaintTool } from '../logic/paint';
 import type { RoofTool } from '../logic/roofs';
@@ -10,6 +10,8 @@ import { spriteImg } from './sprite';
 export interface PaletteActions {
   /** A finger went down on an item card: start dragging that item. */
   onCardPointerDown(kind: string, event: PointerEvent): void;
+  /** An item card was tapped (not dragged): pop that item into the plot. */
+  onCardTap(kind: string): void;
   /** A ground tool or an eraser was tapped. */
   onToolTap(tool: PaintTool): void;
   /** The Fence tool was tapped (a material is chosen next). */
@@ -230,6 +232,29 @@ function makeItemCard(feature: PlaceableFeature, actions: PaletteActions): HTMLE
   name.textContent = feature.label;
 
   card.append(spriteImg(featurePicture(feature.id), 'sprite palette-sprite'), name);
-  card.addEventListener('pointerdown', (event) => actions.onCardPointerDown(feature.id, event));
+  card.addEventListener('pointerdown', (event) => {
+    actions.onCardPointerDown(feature.id, event);
+    watchForTap(event, () => actions.onCardTap(feature.id));
+  });
   return card;
+}
+
+/**
+ * Calls `onTap` if this finger comes up soon, close to where it went down. A longer press or a move
+ * is a drag, which the drag controller handles on its own, so tapping and dragging both work on a card.
+ */
+function watchForTap(down: PointerEvent, onTap: () => void): void {
+  if (!down.isPrimary) return;
+  const stop = () => {
+    window.removeEventListener('pointerup', up);
+    window.removeEventListener('pointercancel', stop);
+  };
+  const up = (event: PointerEvent) => {
+    if (event.pointerId !== down.pointerId) return;
+    stop();
+    const moved = Math.hypot(event.clientX - down.clientX, event.clientY - down.clientY);
+    if (moved <= TAP.maxMoveCss && event.timeStamp - down.timeStamp <= TAP.maxMs) onTap();
+  };
+  window.addEventListener('pointerup', up);
+  window.addEventListener('pointercancel', stop);
 }

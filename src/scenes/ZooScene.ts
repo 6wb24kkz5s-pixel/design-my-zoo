@@ -19,7 +19,7 @@ import {
   type Message,
 } from '../data/content';
 import { PIXEL_RATIO } from '../display';
-import { findFreeSpot } from '../logic/animals';
+import { findFreeItemSpot, findFreeSpot } from '../logic/animals';
 import { checkArea } from '../logic/enclosures';
 import { canUndo, commit, createHistory, undo, type History } from '../logic/history';
 import { evaluateAnimal } from '../logic/needs';
@@ -130,6 +130,7 @@ export class ZooScene extends Phaser.Scene {
     if (this.soundOn) window.addEventListener('pointerdown', () => this.sounds.unlock(), { once: true });
     this.palette = createPalette(ui, {
       onCardPointerDown: (kind, event) => this.dragController.startFromPalette(kind, event),
+      onCardTap: (kind) => void this.addItem(kind),
       onToolTap: (tool) => this.toggleTool(tool),
       onFenceTap: () => void this.chooseFence(),
       onRoofTap: () => void this.chooseRoof(),
@@ -429,9 +430,9 @@ export class ZooScene extends Phaser.Scene {
   }
 
   /** A new item was dropped from the palette where it fits. Ask for its material first, if it has a choice. */
-  private async dropNew(kind: string, col: number, row: number): Promise<void> {
+  private async dropNew(kind: string, col: number, row: number): Promise<boolean> {
     const feature = getFeature(kind);
-    if (!feature) return;
+    if (!feature) return false;
 
     let material: string | undefined;
     if (feature.materialIds.length > 0) {
@@ -440,14 +441,52 @@ export class ZooScene extends Phaser.Scene {
         { icon: tabIcon(feature.tab), title: `Choose a material for your ${feature.label.toLowerCase()}` },
         getMaterials(feature.materialIds),
       );
-      if (!chosen) return;
+      if (!chosen) return false;
       material = chosen;
     }
 
     const next = placeItem(this.history.present, featureCatalogue, kind, col, row, material);
-    if (!next) return;
+    if (!next) return false;
     this.commit(next);
     if (material) this.reportMaterial(kind, material);
+    return true;
+  }
+
+  /**
+   * A palette card was tapped: the item pops onto the free spot nearest the middle of the view
+   * (a water square for water-only items), asking for a material first if it has a choice.
+   */
+  private async addItem(kind: string): Promise<void> {
+    const feature = getFeature(kind);
+    if (!feature) return;
+    this.cancelGestures();
+    const zoo = this.history.present;
+    const centre = this.cameraController.worldCentre();
+    const near = { col: centre.x / GRID.squareSize, row: centre.y / GRID.squareSize };
+    const spot = findFreeItemSpot(zoo, featureCatalogue, kind, near);
+    if (!spot) {
+      // Water-only things need a pool. With no pool at all, say that; otherwise there is just no room.
+      const noPool = featureCatalogue.placeOn(kind) === 'water' && !zoo.items.some((i) => featureCatalogue.isWaterKind(i.kind));
+      this.showNotice(noPool ? NOTICES.needsWater : NOTICES.noRoom);
+      return;
+    }
+    if (await this.dropNew(kind, spot.col, spot.row)) this.flashSpot(feature.size, spot);
+  }
+
+  /** A short glow where something just popped in, so it is easy to find on a big plot. */
+  private flashSpot(size: readonly [number, number], spot: Square): void {
+    const s = GRID.squareSize;
+    const glow = this.add
+      .rectangle(spot.col * s, spot.row * s, size[0] * s, size[1] * s, 0xffe066, 0.55)
+      .setOrigin(0)
+      .setStrokeStyle(4, 0xffd23f)
+      .setDepth(DEPTH.ghost);
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    if (reduceMotion) {
+      this.time.delayedCall(900, () => glow.destroy());
+      return;
+    }
+    this.tweens.add({ targets: glow, alpha: 0, duration: 1000, ease: 'Quad.easeIn', onComplete: () => glow.destroy() });
   }
 
   /** Tapping an item with a material choice reopens the picker, so you can try another one. */
