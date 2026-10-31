@@ -34,7 +34,8 @@ Science content: src/data/char-and-properties.json
 - Touch rules: one finger = place / drag / paint; two fingers = pan and pinch-zoom.
   Tap targets at least 48×48 px.
 - The iPad is the main device. A computer also works, with no keyboard controls: left button = place / drag / paint,
-  mouse wheel or trackpad pinch = zoom at the pointer, middle or right button (or left on empty ground) drag = pan.
+  trackpad pinch = zoom at the pointer, two-finger trackpad scroll or mouse wheel = pan,
+  middle or right button (or left on empty ground) drag = pan. Scrolling never zooms.
 
 ## Working style
 - Build one milestone at a time from docs/MILESTONES.md. Stop at the end of each

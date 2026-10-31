@@ -58,7 +58,7 @@ Split into two iPad checks, because art is a matter of taste and should be seen 
 - Animals are picked up and tapped where they are drawn.
 - 🔇/🔊 button in the top bar. Four short sounds (pop, splash, bloop, chime) made by the iPad itself. Off by default; the choice is remembered. The chime plays when an animal becomes happy.
 - Tap a palette card to pop the item onto the free spot nearest the middle of the view (a pool square for water-only items), with a short glow. Dragging a card still works. Materials are asked for first, as with a drag.
-- Computers: mouse wheel or trackpad pinch zooms at the pointer; dragging pans (middle or right button anywhere, left button on empty ground with no tool on). No keyboard controls.
+- Computers: a trackpad pinch zooms at the pointer; two-finger scroll or the mouse wheel pans; dragging pans too (middle or right button anywhere, left button on empty ground with no tool on). Scrolling never zooms. No keyboard controls.
 - `docs/wording-review.md`: a before-and-after list of message wording. **Nothing is applied until approved.**
 - **Done when:** the animals feel alive, and it still runs smoothly with a full zoo.
 

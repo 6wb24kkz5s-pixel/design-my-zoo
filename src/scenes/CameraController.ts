@@ -6,8 +6,9 @@ import {
   lerpView,
   pan,
   screenToWorld,
+  pinchZoomFactor,
   usableCentre,
-  wheelZoomFactor,
+  wheelPixels,
   zoomAt,
   zoomLimits,
   type Insets,
@@ -27,7 +28,7 @@ const LIMIT_TOLERANCE = 1e-6;
  * Two fingers pan and pinch-zoom the camera; one finger does nothing here.
  * The + / – buttons and "See whole zoo" animate the camera.
  *
- * On a computer: the mouse wheel (or a trackpad pinch) zooms where the pointer is, and dragging pans.
+ * On a computer: a trackpad pinch zooms where the pointer is, and scrolling (two fingers or a wheel) or dragging pans.
  * The middle or right button always pans. The left button pans when it goes down on empty ground
  * (`canLeftPan` says whether that spot is empty), so it never fights with placing, dragging or painting.
  */
@@ -64,14 +65,25 @@ export class CameraController {
     return { x: (clientX - box.left) * PIXEL_RATIO, y: (clientY - box.top) * PIXEL_RATIO };
   }
 
+  /**
+   * A trackpad pinch (which browsers send as ctrl + wheel) zooms where the pointer is. Anything else,
+   * like two fingers sliding on a trackpad or a mouse wheel, scrolls the view, like two fingers on the iPad.
+   */
   private readonly onWheel = (event: WheelEvent): void => {
     event.preventDefault(); // the page itself must not scroll or zoom
     this.stopTween();
     const viewport = this.viewport();
-    const factor = wheelZoomFactor(event.deltaY, event.deltaMode, event.ctrlKey);
-    const zoom = clampZoom(this.view.zoom * factor, this.limits());
-    const focus = this.toScreen(event.clientX, event.clientY);
-    this.setView(clampView(zoomAt(this.view, viewport, zoom, focus), viewport, this.insets(), this.margin()));
+    if (event.ctrlKey) {
+      const zoom = clampZoom(this.view.zoom * pinchZoomFactor(event.deltaY, event.deltaMode), this.limits());
+      const focus = this.toScreen(event.clientX, event.clientY);
+      this.setView(clampView(zoomAt(this.view, viewport, zoom, focus), viewport, this.insets(), this.margin()));
+      return;
+    }
+    // Content follows the fingers, so scrolling down moves the view down. Shift + wheel scrolls sideways.
+    const dx = wheelPixels(event.shiftKey && event.deltaX === 0 ? event.deltaY : event.deltaX, event.deltaMode);
+    const dy = event.shiftKey && event.deltaX === 0 ? 0 : wheelPixels(event.deltaY, event.deltaMode);
+    const moved = pan(this.view, -dx * PIXEL_RATIO, -dy * PIXEL_RATIO);
+    this.setView(clampView(moved, viewport, this.insets(), this.margin()));
   };
 
   private readonly onMouseDown = (event: PointerEvent): void => {
